@@ -12,6 +12,7 @@ uri = "abfss://meter-data@ecemdmstore.dfs.core.windows.net/"
 checkpoint_path = uri + "Bronze/Checkpoint"
 
 input_path = uri + "Bronze/"
+output_path = uri + "Bronze6/Output"
 
 table_name = "MeterData3"
 
@@ -55,12 +56,14 @@ df1 = spark.readStream.format("cloudFiles") \
     .option("cloudFiles.schemaLocation", checkpoint_path ) \
     .load(input_path) 
 
+
 query = df1.writeStream \
     .format("delta") \
-    .option("checkpointLocation", "Checkpoint") \
+    .option("checkpointLocation", checkpoint_path) \
+    .option("path", output_path) \
     .outputMode("append") \
     .trigger(availableNow=True) \
-    .table(table_name)
+    .table(table_name)    
 
 query.awaitTermination()
 
