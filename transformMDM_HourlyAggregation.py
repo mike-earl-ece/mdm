@@ -25,15 +25,11 @@ uri = "abfss://meter-data@ecemdmstore.dfs.core.windows.net/"
 
 output_path = uri + "Gold/MeterMetrics/HourlyAggregation"
 
-source_table_name = "MeterData3"
 
 # COMMAND ----------
 
-#Read the data from the source table
-meter_df = spark.read.table(source_table_name)
-
-# Ignore invalid rows
-meter_df_cleaned = meter_df.filter(meter_df.MeterNumber.isNotNull())
+# Read the data from the source table
+meter_df_cleaned = spark.read.format("delta").load(uri + "Silver/Conformed")
 
 if debug:
     display(meter_df_cleaned)
