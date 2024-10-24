@@ -94,7 +94,7 @@ if debug:
     print(df2.count())
 
 df2_cleaned = df2.filter(df2.MeterNumber.isNotNull())
-df2_cleaned = df2.drop('_rescued_data')
+df2_cleaned = df2_cleaned.drop('_rescued_data')
 df2_cleaned = df2_cleaned.dropDuplicates()
 
 if debug:
