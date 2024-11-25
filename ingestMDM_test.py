@@ -8,12 +8,12 @@ spark.conf.set(
     dbutils.secrets.get(scope=my_scope, key=my_key))
 
 uri = "abfss://meter-data-test@ecemdmstore.dfs.core.windows.net/"
-checkpoint_path = uri + "Output/_checkpoint"
+checkpoint_path = uri + "_checkpoint88"
 
 input_path = uri + "Input/"
 output_path = uri + "Output"
 
-table_name = "MeterData999"
+table_name = "MeterData88"
 
 
 # COMMAND ----------
@@ -48,13 +48,53 @@ schema = StructType([
 
 # COMMAND ----------
 
+# MAGIC %sql
+# MAGIC CREATE TABLE IF NOT EXISTS default.meterdata88 USING DELTA LOCATION 'abfss://meter-data-test@ecemdmstore.dfs.core.windows.net/TestTable88'
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SHOW SCHEMAS
+# MAGIC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC DESCRIBE SCHEMA default
+
+# COMMAND ----------
+
+df1 = spark.readStream.format("cloudFiles") \
+    .schema(schema) \
+    .option("cloudFiles.format", "csv") \
+    .option("rescuedDataColumn", "_rescued_data") \
+    .option("cloudFiles.schemaLocation", checkpoint_path ) \
+    .load(input_path) 
+
+query = df1.writeStream \
+    .format("delta") \
+    .option("checkpointLocation", checkpoint_path) \
+    .option("path", output_path) \
+    .option("mergeSchema", "true") \
+    .outputMode("append") \
+    .trigger(availableNow=True) \
+    .table(table_name)    
+
+query.awaitTermination()
+
 
 
 # COMMAND ----------
 
-#spark.sql(f"CREATE TABLE IF NOT EXISTS default.{table_name} USING DELTA")
-spark.sql(f"CREATE TABLE IF NOT EXISTS default.meterdata999 USING DELTA")
+# MAGIC %sql
+# MAGIC DROP TABLE MeterData999
 
+# COMMAND ----------
+
+df2 = spark.read.table(table_name)
+
+display(df2)
 
 # COMMAND ----------
 
@@ -95,27 +135,6 @@ query = df1.writeStream \
     .table(table_name)    
 
 query.awaitTermination()
-
-
-# COMMAND ----------
-
-df1 = spark.readStream.format("cloudFiles") \
-    .schema(schema) \
-    .option("cloudFiles.format", "csv") \
-    .option("rescuedDataColumn", "_rescued_data") \
-    .option("cloudFiles.schemaLocation", checkpoint_path ) \
-    .load(input_path) 
-
-query = df1.writeStream \
-    .format("delta") \
-    .option("checkpointLocation", checkpoint_path) \
-    .option("path", output_path) \
-    .outputMode("append") \
-    .trigger(availableNow=True) \
-    .table(table_name)    
-
-query.awaitTermination()
-
 
 
 # COMMAND ----------

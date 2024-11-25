@@ -3,6 +3,11 @@ debug = 1
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC
+
+# COMMAND ----------
+
 storage_end_point = "ecemdmstore.dfs.core.windows.net" 
 my_scope = "MeterDataStorageVault"
 my_key = "MeterStorageAccessKey"
