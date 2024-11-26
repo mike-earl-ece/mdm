@@ -12,10 +12,7 @@
 
 debug=1
 
-# COMMAND ----------
-
 set_spark_config()
-
 
 # COMMAND ----------
 
@@ -23,7 +20,7 @@ set_spark_config()
 
 from pyspark.sql.types import StructType, StructField, IntegerType, FloatType, StringType, TimestampType
 
-ingest_schema = StructType([
+mdm_cleaned_schema = StructType([
     StructField("MeterNumber", IntegerType(), True),
     StructField("UnitOfMeasure", StringType(), True),
     StructField("FlowDirection", StringType(), True),
@@ -45,7 +42,7 @@ ingest_schema = StructType([
 # COMMAND ----------
 
 # Create an empty dataframe and write to storage
-empty_df = spark.createDataFrame([], schema=ingest_schema)
+empty_df = spark.createDataFrame([], schema=mdm_cleaned_schema)
 
 if debug:
     display(empty_df)

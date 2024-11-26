@@ -5,6 +5,14 @@
 
 # COMMAND ----------
 
+# Constants
+CONTAINER_URI_PATH = "abfss://meter-data@ecemdmstore.dfs.core.windows.net/"
+MDM_CLEANED_PATH = CONTAINER_URI_PATH + "SilverConformed/MDM/Cleaned/"
+MDM_INGEST_TABLE = "default.bronze_mdmingest"
+MDM_CLEANED_TABLE = "default.silverconformed_mdm_cleaned"
+
+# COMMAND ----------
+
 def set_spark_config():
     storage_end_point = "ecemdmstore.dfs.core.windows.net" 
     my_scope = "MeterDataStorageVault"
