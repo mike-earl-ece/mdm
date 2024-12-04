@@ -15,21 +15,27 @@ debug = 1
 
 # COMMAND ----------
 
+# Set up the environment using a function in ConfigUtilties.
 set_spark_config()
 
 # COMMAND ----------
 
-# Initialize key variables
-uri = "abfss://meter-data@ecemdmstore.dfs.core.windows.net/"
-checkpoint_path = uri + "Bronze/Checkpoint"
-input_path = uri + "MDMLandingZone/*.csv" 
-table_name = "default.bronze_mdmingest"
-output_path = uri + "Bronze/MDM"
+# Initialize key variables. The constants are defined in ConfigUtilities.
+uri = CONTAINER_URI_PATH
+checkpoint_path = MDM_INGEST_CHECKPOINT_PATH
+input_path = MDM_LANDING_PATH 
+table_name = MDM_INGEST_TABLE
+
+if debug:
+    print("uri: " + uri)
+    print("checkpoint_path: " + checkpoint_path)
+    print("input_path: " + input_path)
+    print("table_name: " + table_name)
 
 
 # COMMAND ----------
 
-# Create the data schema to use with the ingested data
+# Create the data schema to use with the ingested data.  Since the data is in CSV format, we need to define the schema.
 from pyspark.sql.types import StructType, StructField, IntegerType, FloatType, StringType, TimestampType
 
 schema = StructType([
@@ -54,6 +60,7 @@ schema = StructType([
 
 # COMMAND ----------
 
+# Get a count of rows in the Bronze table before ingestion.
 if debug:
   pre_update_df = spark.read.table(table_name)
   print("Before update count: " + str(pre_update_df.count()))
@@ -61,18 +68,21 @@ if debug:
 
 # COMMAND ----------
 
-# Incrementally ingest the data 
+# Incrementally ingest the data.  These streaming APIs will look for new files in the MDM Extract landing location
+# and write them to the Bronze delta table.  If there is redundant data in the new files from earlier runs, this will 
+# be included in the table.  The transformation from Bronze to SilverConfirmed will update the records as needed.
 df1 = spark.readStream.format("cloudFiles") \
     .schema(schema) \
     .option("cloudFiles.format", "csv") \
     .option("rescuedDataColumn", "_rescued_data") \
     .option("cloudFiles.schemaLocation", checkpoint_path ) \
+    .option("header", "false") \
+    .option("skipRows", 1) \
     .load(input_path) 
 
 query = df1.writeStream \
     .format("delta") \
     .option("checkpointLocation", checkpoint_path) \
-    .option("path", output_path) \
     .option("mergeSchema", "true") \
     .outputMode("append") \
     .trigger(availableNow=True) \
@@ -84,6 +94,7 @@ query.awaitTermination()
 
 # COMMAND ----------
 
+# Get a count of rows in the Bronze table after ingestion.
 if debug:
   post_update_df = spark.read.table(table_name)
   print("After update count: " + str(post_update_df.count()))

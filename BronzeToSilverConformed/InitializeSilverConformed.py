@@ -16,6 +16,14 @@ set_spark_config()
 
 # COMMAND ----------
 
+# MAGIC %sql
+# MAGIC -- Drop table if needed for reset
+# MAGIC DROP TABLE default.silverconformed_mdm_cleaned
+# MAGIC
+# MAGIC -- Clean up the delta 
+
+# COMMAND ----------
+
 # Create desired schema
 
 from pyspark.sql.types import StructType, StructField, IntegerType, FloatType, StringType, TimestampType
@@ -54,4 +62,6 @@ empty_df.write.format("delta").mode("overwrite").save("abfss://meter-data@ecemdm
 
 # MAGIC %sql
 # MAGIC -- Create the  table.  This should be created as an external table so we can explicitly manage the storage.
-# MAGIC CREATE TABLE IF NOT EXISTS default.silverconformed_mdm_cleaned USING DELTA LOCATION "abfss://meter-data@ecemdmstore.dfs.core.windows.net/SilverConformed/MDM/Cleaned"
+# MAGIC CREATE TABLE IF NOT EXISTS default.silverconformed_mdm_cleaned 
+# MAGIC USING DELTA LOCATION "abfss://meter-data@ecemdmstore.dfs.core.windows.net/SilverConformed/MDM/Cleaned"
+# MAGIC TBLPROPERTIES (delta.enableChangeDataFeed = true);
