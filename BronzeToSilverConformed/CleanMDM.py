@@ -1,7 +1,7 @@
 # Databricks notebook source
 # MAGIC %md
 # MAGIC # Clean MDM
-# MAGIC Cleans MDM data ingested into the Bronze tier. 
+# MAGIC Transforms ingested data from Bronze into deduplicated and updated data in SilverConformed. 
 
 # COMMAND ----------
 
