@@ -76,3 +76,9 @@ display(ingest_out_df)
 # COMMAND ----------
 
 display(ingest_out_df.filter(ingest_out_df.MeterNumber.isNull()))
+
+# COMMAND ----------
+
+from pyspark.sql.functions import col
+
+display(ingest_df.filter(col('MeterNumber')==37943913))

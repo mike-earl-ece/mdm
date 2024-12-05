@@ -19,6 +19,9 @@ MDM_INGEST_TABLE = "default.bronze_mdmingest"
 MDM_CLEANED_PATH = CONTAINER_URI_PATH + "SilverConformed/MDM/Cleaned/"
 MDM_CLEANED_TABLE = "default.silverconformed_mdm_cleaned"
 INDEXED_CALENDAR_PATH = CONTAINER_URI_PATH + "SilverConformed/IndexedCalendar/"
+MDM_INDEXED_PATH = CONTAINER_URI_PATH + "SilverConformed/MDM/Indexed/"
+MDM_INDEXED_TABLE = "default.silverconformed_mdm_indexed"
+
 
 
 # COMMAND ----------

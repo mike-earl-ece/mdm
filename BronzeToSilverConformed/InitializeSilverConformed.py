@@ -61,7 +61,15 @@ empty_df.write.format("delta").mode("overwrite").save("abfss://meter-data@ecemdm
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC -- Create the  table.  This should be created as an external table so we can explicitly manage the storage.
+# MAGIC -- Create the  cleaned table.  This should be created as an external table so we can explicitly manage the storage.
 # MAGIC CREATE TABLE IF NOT EXISTS default.silverconformed_mdm_cleaned 
 # MAGIC USING DELTA LOCATION "abfss://meter-data@ecemdmstore.dfs.core.windows.net/SilverConformed/MDM/Cleaned"
+# MAGIC TBLPROPERTIES (delta.enableChangeDataFeed = true);
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC -- Create the indexed table.  This should be created as an external table so we can explicitly manage the storage.
+# MAGIC CREATE TABLE IF NOT EXISTS default.silverconformed_mdm_indexed 
+# MAGIC USING DELTA LOCATION "abfss://meter-data@ecemdmstore.dfs.core.windows.net/SilverConformed/MDM/Indexed"
 # MAGIC TBLPROPERTIES (delta.enableChangeDataFeed = true);

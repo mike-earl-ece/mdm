@@ -122,6 +122,7 @@ if found_changes:
                 .execute()
     # Else just insert the new data (clean table is empty)
     else:  
+        insert_changes_df = insert_changes_df.dropDuplicates()
         ingest_changes_df.write.format("delta") \
                 .mode("overwrite") \
                 .option("mergeSchema", "True") \
@@ -129,7 +130,17 @@ if found_changes:
 
 # COMMAND ----------
 
+
+
+# COMMAND ----------
+
 if debug:
     clean_out_df = spark.read.table(output_table_name)
     print(clean_out_df.count())
     display(clean_out_df)
+
+# COMMAND ----------
+
+# Look for duplicate rows.  This likely indicates a problem with the upsert.
+if debug:
+    display(clean_out_df.groupBy(clean_out_df.columns).count().filter("count > 1").orderBy("count", ascending=False))

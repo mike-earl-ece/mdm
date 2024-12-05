@@ -6,6 +6,8 @@
 # COMMAND ----------
 
 # Imports and debug
+from pyspark.sql.functions import col
+
 debug = 1
 
 
@@ -98,3 +100,7 @@ query.awaitTermination()
 if debug:
   post_update_df = spark.read.table(table_name)
   print("After update count: " + str(post_update_df.count()))
+
+# COMMAND ----------
+
+display(post_update_df.filter(col('MeterNumber')==37943913))
