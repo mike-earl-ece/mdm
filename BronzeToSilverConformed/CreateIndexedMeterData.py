@@ -95,31 +95,34 @@ if found_changes:
 # COMMAND ----------
 
 # Read the indexed calendar
-cal_df =  spark.read.parquet(INDEXED_CALENDAR_PATH)
+if found_changes:
+    cal_df =  spark.read.parquet(INDEXED_CALENDAR_PATH)
 
-if debug:
-    display(cal_df)
+    if debug:
+        display(cal_df)
 
 # COMMAND ----------
 
 # Join datasets by time.  Use the ending time for the meter data.
 
 # Add time columns to the cleaned data for the join.
-clean_changes_df = clean_changes_df.withColumn("Year", year(col("EndDateTime"))) \
+if found_changes:
+    clean_changes_df = clean_changes_df.withColumn("Year", year(col("EndDateTime"))) \
                                        .withColumn("Month", month(col("EndDateTime"))) \
                                         .withColumn("Day", day(col("EndDateTime"))) \
                                         .withColumn("Hour", hour(col("EndDateTime"))) \
                                         .withColumn("Minute", minute(col("EndDateTime")))
 
-if debug:
-    display(clean_changes_df)
+    if debug:
+        display(clean_changes_df)
 
 # COMMAND ----------
 
-new_data_df = clean_changes_df.join(cal_df, on=["Year","Month","Day","Hour", "Minute"], how="leftouter")
+if found_changes:
+    new_data_df = clean_changes_df.join(cal_df, on=["Year","Month","Day","Hour", "Minute"], how="leftouter")
 
-if debug:
-    display(new_data_df)
+    if debug:
+        display(new_data_df)
 
 # COMMAND ----------
 
