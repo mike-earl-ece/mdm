@@ -20,7 +20,15 @@ set_spark_config()
 # MAGIC -- Drop table if needed for reset
 # MAGIC DROP TABLE default.silverconformed_mdm_cleaned
 # MAGIC
-# MAGIC -- Clean up the delta 
+# MAGIC -- Clean up the delta lake
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC -- Drop table if needed for reset
+# MAGIC DROP TABLE default.silverconformed_mdm_indexed
+# MAGIC
+# MAGIC -- Clean up the delta lake
 
 # COMMAND ----------
 
@@ -50,12 +58,13 @@ mdm_cleaned_schema = StructType([
 # COMMAND ----------
 
 # Create an empty dataframe and write to storage
-empty_df = spark.createDataFrame([], schema=mdm_cleaned_schema)
+# Note - doesn't seem to be needed, so commented out.
+# empty_df = spark.createDataFrame([], schema=mdm_cleaned_schema)
 
-if debug:
-    display(empty_df)
+# if debug:
+#     display(empty_df)
 
-empty_df.write.format("delta").mode("overwrite").save("abfss://meter-data@ecemdmstore.dfs.core.windows.net/SilverConformed/MDM/Cleaned")
+# empty_df.write.format("delta").mode("overwrite").save("abfss://meter-data@ecemdmstore.dfs.core.windows.net/SilverConformed/MDM/Cleaned")
 
 
 # COMMAND ----------

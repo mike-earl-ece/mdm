@@ -7,6 +7,7 @@
 
 # Imports and debug
 from pyspark.sql.functions import col
+from pyspark.sql.utils import AnalysisException
 
 debug = 1
 
@@ -62,10 +63,14 @@ schema = StructType([
 
 # COMMAND ----------
 
+
 # Get a count of rows in the Bronze table before ingestion.
 if debug:
-  pre_update_df = spark.read.table(table_name)
-  print("Before update count: " + str(pre_update_df.count()))
+  try:
+    pre_update_df = spark.read.table(table_name)
+    print("Before update count: " + str(pre_update_df.count()))
+  except AnalysisException as e:
+    print(str(e))
 
 
 # COMMAND ----------
@@ -76,6 +81,7 @@ if debug:
 df1 = spark.readStream.format("cloudFiles") \
     .schema(schema) \
     .option("cloudFiles.format", "csv") \
+    .option("compression", "gzip") \
     .option("rescuedDataColumn", "_rescued_data") \
     .option("cloudFiles.schemaLocation", checkpoint_path ) \
     .option("header", "false") \
@@ -100,7 +106,3 @@ query.awaitTermination()
 if debug:
   post_update_df = spark.read.table(table_name)
   print("After update count: " + str(post_update_df.count()))
-
-# COMMAND ----------
-
-display(post_update_df.filter(col('MeterNumber')==37943913))

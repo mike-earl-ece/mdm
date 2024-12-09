@@ -7,14 +7,9 @@ set_spark_config()
 
 # COMMAND ----------
 
-uri = "abfss://meter-data-test@ecemdmstore.dfs.core.windows.net/"
-ingest_path = uri + "MDMLandingZone"
-mock_ingest_table = "default.bronze_mock_mdmingest"
-checkpoint_path = uri + "Bronze_Mock/MDM/Checkpoint"
-
-# COMMAND ----------
 
 from pyspark.sql.types import StructType, StructField, IntegerType, FloatType, StringType, TimestampType
+
 schema = StructType([
     StructField("MeterNumber", IntegerType(), True),
     StructField("UnitOfMeasure", StringType(), True),
@@ -37,51 +32,23 @@ schema = StructType([
 
 # COMMAND ----------
 
-
-ingest_df = spark.read.table(mock_ingest_table)
-
-print(ingest_df.count())
+df = spark.read.csv(CONTAINER_URI_PATH + "MDMLandingZone", schema=schema, header=True)
+display(df)
 
 # COMMAND ----------
 
-df1 = spark.readStream.format("cloudFiles") \
-    .schema(schema) \
-    .option("cloudFiles.format", "csv") \
-    .option("compression", "gzip") \
-    .option("header", "false") \
-    .option("rescuedDataColumn", "_rescued_data") \
-    .option("cloudFiles.schemaLocation", checkpoint_path ) \
-    .option("skipRows", 1) \
-    .load(ingest_path) 
-
-#display(df1)
-
-query = df1.writeStream \
-    .format("delta") \
-    .option("checkpointLocation", checkpoint_path) \
-    .outputMode("append") \
-    .option("mergeSchema", "True") \
-    .trigger(availableNow=True) \
-    .table(mock_ingest_table)    
-
-query.awaitTermination()
-
-
+dbutils.fs.ls(CONTAINER_URI_PATH + "MDMLandingZone")
 
 # COMMAND ----------
 
-ingest_out_df = spark.read.table(mock_ingest_table)
-
-print(ingest_out_df.count())
-
-display(ingest_out_df)
-
-# COMMAND ----------
-
-display(ingest_out_df.filter(ingest_out_df.MeterNumber.isNull()))
+# Read zip format
+df = spark.read.format("csv").option("compression", "gzip").option("header", True).schema(schema).load(CONTAINER_URI_PATH + "MDMLandingZone")
+display(df)
 
 # COMMAND ----------
 
 from pyspark.sql.functions import col
 
-display(ingest_df.filter(col('MeterNumber')==37943913))
+print(df.count())
+
+display(df.groupBy(col("UnitOfMeasure")).count())
