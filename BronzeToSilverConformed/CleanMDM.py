@@ -48,11 +48,12 @@ if debug:
 
 # COMMAND ----------
 
-try:
-    pre_update_df = spark.read.table(output_table_name)
-    print("Before update count: " + str(pre_update_df.count()))
-except AnalysisException as e:
-    print(str(e))
+if debug:
+    try:
+        pre_update_df = spark.read.table(output_table_name)
+        print("Before update count: " + str(pre_update_df.count()))
+    except AnalysisException as e:
+        print(str(e))
 
 
 # COMMAND ----------

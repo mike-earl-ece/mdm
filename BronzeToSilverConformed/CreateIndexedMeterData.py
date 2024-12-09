@@ -37,9 +37,14 @@ if debug:
 
 # COMMAND ----------
 
+# Get output table count.
 if debug:
-    indexed_in_df = spark.read.table(output_table_name)
-    print(indexed_in_df.count())
+    try:
+        pre_update_df = spark.read.table(output_table_name)
+        print("Before update count: " + str(pre_update_df.count()))
+    except AnalysisException as e:
+        print(str(e))
+
 
 # COMMAND ----------
 
