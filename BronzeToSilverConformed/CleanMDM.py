@@ -120,7 +120,7 @@ if found_changes:
         # Do an upsert of the changes.
         clean_table.alias('clean') \
             .merge(ingest_changes_df.alias('ingest'), 
-            'clean.MeterNumber = ingest.MeterNumber AND clean.Channel = ingest.Channel AND clean.FlowDirection = ingest.FlowDirection AND clean.StartDateTime = ingest.StartDateTime AND clean.EndDateTime = ingest.EndDateTime') \
+            'clean.UnitOfMeasure = ingest.UnitOfMeasure AND clean.MeterNumber = ingest.MeterNumber AND clean.Channel = ingest.Channel AND clean.FlowDirection = ingest.FlowDirection AND clean.StartDateTime = ingest.StartDateTime AND clean.EndDateTime = ingest.EndDateTime') \
                 .whenMatchedUpdateAll() \
                 .whenNotMatchedInsertAll() \
                 .execute()

@@ -140,7 +140,7 @@ if found_changes:
         # Do an upsert of the changes.
         indexed_table.alias('index') \
             .merge(new_data_df.alias('clean'), 
-            'clean.MeterNumber = index.MeterNumber AND clean.Channel = index.Channel AND clean.FlowDirection = index.FlowDirection AND clean.StartDateTime = index.StartDateTime AND clean.EndDateTime = index.EndDateTime') \
+            'clean.UnitOfMeasure = index.UnitOfMeasure AND clean.MeterNumber = index.MeterNumber AND clean.Channel = index.Channel AND clean.FlowDirection = index.FlowDirection AND clean.StartDateTime = index.StartDateTime AND clean.EndDateTime = index.EndDateTime') \
                 .whenMatchedUpdateAll() \
                 .whenNotMatchedInsertAll() \
                 .execute()
