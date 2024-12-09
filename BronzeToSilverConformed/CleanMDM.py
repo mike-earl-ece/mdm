@@ -126,7 +126,7 @@ if found_changes:
                 .execute()
     # Else just insert the new data (clean table is empty)
     else:  
-        insert_changes_df = insert_changes_df.dropDuplicates()
+        ingest_changes_df = ingest_changes_df.dropDuplicates()
         ingest_changes_df.write.format("delta") \
                 .mode("overwrite") \
                 .option("mergeSchema", "True") \
