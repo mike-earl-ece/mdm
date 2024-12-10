@@ -142,12 +142,6 @@ if found_clean_changes:
 
 # COMMAND ----------
 
-if debug and found_clean_changes:
-    max_time_df = clean_changes_df.select("EndDateTime").distinct().orderBy("EndDateTime", ascending=True)
-    display(max_time_df)
-
-# COMMAND ----------
-
 # Upsert the changes to the indexed table
 if found_clean_changes:
     if index_has_data:
@@ -168,31 +162,6 @@ if found_clean_changes:
                 .mode("overwrite") \
                 .option("mergeSchema", "True") \
                 .save(MDM_INDEXED_PATH)
-
-# COMMAND ----------
-
-index_table = spark.read.table(output_table_name)
-
-index_table = index_table.drop('Year', 'Month', 'Day', 'Hour', 'Minute')
-
-joined_df = new_data_df.join(
-    index_table,
-    on=["UnitOfMeasure", "MeterNumber", "Channel", "FlowDirection", "StartDateTime", "EndDateTime"],
-    how="inner"
-)
-
-display(joined_df.orderBy("MeterNumber", "Channel", "FlowDirection", "StartDateTime", "EndDateTime"))
-
-# COMMAND ----------
-
-display(index_table.filter((col("MeterNumber")==19344956) & (col("UnitOfMeasure")=="VOLTAGE_INTERVAL")))
-display(new_data_df.filter((col("MeterNumber")==19344956) & (col("UnitOfMeasure")=="VOLTAGE_INTERVAL")))
-
-# COMMAND ----------
-
-joined_df = joined_df.orderBy("MeterNumber")
-
-display(duplicates_df)
 
 # COMMAND ----------
 
