@@ -15,7 +15,7 @@ set_spark_config()
 
 uri = "abfss://meter-data-test@ecemdmstore.dfs.core.windows.net/"
 ingest_path = uri + "MDMLandingZone"
-mock_ingest_table = "default.bronze_mock_mdmingest"
+mock_ingest_table = "default.bronze_mock_mdmingest_2"
 mock_cleaned_table = "default.silverconformed_mock_mdm_cleaned"
 
 # COMMAND ----------
@@ -79,9 +79,27 @@ empty_df.write.format("delta").mode("overwrite").save("abfss://meter-data-test@e
 
 # MAGIC %sql
 # MAGIC -- Create the bronze table from the delta lake created in the prevoius step.  
-# MAGIC CREATE TABLE IF NOT EXISTS default.bronze_mock_mdmingest 
+# MAGIC CREATE TABLE IF NOT EXISTS default.bronze_mock_mdmingest_2 
 # MAGIC USING DELTA LOCATION "abfss://meter-data-test@ecemdmstore.dfs.core.windows.net/Bronze_Mock/MDM"
 # MAGIC TBLPROPERTIES (delta.enableChangeDataFeed = true);
+
+# COMMAND ----------
+
+# Test read behavior
+ingest_df = spark.read.table(mock_ingest_table)
+
+print(ingest_df.count())
+
+# COMMAND ----------
+
+# Test changes behavior
+changes_df = spark.read \
+        .option("readChangeFeed", "true") \
+        .option("startingVersion", 0) \
+        .table(mock_ingest_table)
+
+display(changes_df)
+
 
 # COMMAND ----------
 

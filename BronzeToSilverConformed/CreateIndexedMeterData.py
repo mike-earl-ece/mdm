@@ -37,37 +37,45 @@ if debug:
 
 # COMMAND ----------
 
-# Get output table count.
-if debug:
-    try:
-        pre_update_df = spark.read.table(output_table_name)
-        print("Before update count: " + str(pre_update_df.count()))
-    except AnalysisException as e:
-        print(str(e))
+# Find the last update to the indexed meter data.
+index_has_data = True
 
+try:
+        indexed_changes_df = spark.read \
+                .option("readChangeFeed", "true") \
+                .option("startingVersion", 0) \
+                .table(output_table_name)
+        if debug:
+                display(indexed_changes_df)
+
+        if indexed_changes_df.count() != 0:
+                last_change = indexed_changes_df.select("_commit_timestamp").orderBy("_commit_timestamp", ascending=False).first()[0]
+                print(last_change)
+                index_has_data = True
+        else:
+                index_has_data = False
+except AnalysisException as e:
+        print(str(e))
+        index_has_data = False
+
+if debug:
+        print("Index has data: " + str(index_has_data))
 
 # COMMAND ----------
 
-# Find the last update to the indexed meter data.
-indexed_changes_df = spark.read \
-        .option("readChangeFeed", "true") \
-        .option("startingVersion", 0) \
-        .table(output_table_name)
+# Get output table count.
+if debug and index_has_data:
+    pre_update_df = spark.read.table(output_table_name)
+    print("Before update count: " + str(pre_update_df.count()))
 
-if debug:
-    display(indexed_changes_df)
-
-if indexed_changes_df.count() != 0:
-        last_change = indexed_changes_df.select("_commit_timestamp").orderBy("_commit_timestamp", ascending=False).first()[0]
-        print(last_change)
 
 # COMMAND ----------
 
 # Get changes from the cleaned file since the last update to the indexed meter data.
-found_changes = True # Will be set to False if no changes.
+found_clean_changes = True # Will be set to False if no changes.
 
 # If the clean table is empty, get all the changes.
-if indexed_changes_df.count() == 0:
+if index_has_data == False:
         clean_changes_df = spark.read \
                 .option("readChangeFeed", "true") \
                 .option("startingVersion", 0) \
@@ -83,16 +91,19 @@ else:
         except AnalysisException as e:
             if "DELTA_TIMESTAMP_GREATER_THAN_COMMIT" in str(e):
                     print("No changes found after the last commit timestamp.")
-            found_changes = False
+            found_clean_changes = False
 
-if debug and found_changes:
-    display(clean_changes_df)
+if debug: 
+        if found_clean_changes:
+            display(clean_changes_df)
+        else:
+            print("No clean changes found.")
 
 
 # COMMAND ----------
 
 # Clean up changes to import
-if found_changes:
+if found_clean_changes:
     clean_changes_df = clean_changes_df.drop("_rescued_data", "_change_type", "_commit_version", "_commit_timestamp") 
     if debug:
         display(clean_changes_df)
@@ -100,7 +111,7 @@ if found_changes:
 # COMMAND ----------
 
 # Read the indexed calendar
-if found_changes:
+if found_clean_changes:
     cal_df =  spark.read.parquet(INDEXED_CALENDAR_PATH)
 
     if debug:
@@ -111,7 +122,7 @@ if found_changes:
 # Join datasets by time.  Use the ending time for the meter data.
 
 # Add time columns to the cleaned data for the join.
-if found_changes:
+if found_clean_changes:
     clean_changes_df = clean_changes_df.withColumn("Year", year(col("EndDateTime"))) \
                                        .withColumn("Month", month(col("EndDateTime"))) \
                                         .withColumn("Day", day(col("EndDateTime"))) \
@@ -123,7 +134,7 @@ if found_changes:
 
 # COMMAND ----------
 
-if found_changes:
+if found_clean_changes:
     new_data_df = clean_changes_df.join(cal_df, on=["Year","Month","Day","Hour", "Minute"], how="leftouter")
 
     if debug:
@@ -131,9 +142,15 @@ if found_changes:
 
 # COMMAND ----------
 
+if debug and found_clean_changes:
+    max_time_df = clean_changes_df.select("EndDateTime").distinct().orderBy("EndDateTime", ascending=True)
+    display(max_time_df)
+
+# COMMAND ----------
+
 # Upsert the changes to the indexed table
-if found_changes:
-    if indexed_changes_df.count() != 0:
+if found_clean_changes:
+    if index_has_data:
         # Convert the DataFrame to a DeltaTable
         indexed_table = DeltaTable.forName(spark, output_table_name)
 
@@ -151,6 +168,31 @@ if found_changes:
                 .mode("overwrite") \
                 .option("mergeSchema", "True") \
                 .save(MDM_INDEXED_PATH)
+
+# COMMAND ----------
+
+index_table = spark.read.table(output_table_name)
+
+index_table = index_table.drop('Year', 'Month', 'Day', 'Hour', 'Minute')
+
+joined_df = new_data_df.join(
+    index_table,
+    on=["UnitOfMeasure", "MeterNumber", "Channel", "FlowDirection", "StartDateTime", "EndDateTime"],
+    how="inner"
+)
+
+display(joined_df.orderBy("MeterNumber", "Channel", "FlowDirection", "StartDateTime", "EndDateTime"))
+
+# COMMAND ----------
+
+display(index_table.filter((col("MeterNumber")==19344956) & (col("UnitOfMeasure")=="VOLTAGE_INTERVAL")))
+display(new_data_df.filter((col("MeterNumber")==19344956) & (col("UnitOfMeasure")=="VOLTAGE_INTERVAL")))
+
+# COMMAND ----------
+
+joined_df = joined_df.orderBy("MeterNumber")
+
+display(duplicates_df)
 
 # COMMAND ----------
 

@@ -48,43 +48,51 @@ if debug:
 
 # COMMAND ----------
 
-if debug:
-    try:
-        pre_update_df = spark.read.table(output_table_name)
-        print("Before update count: " + str(pre_update_df.count()))
-    except AnalysisException as e:
+# Get last change from the cleaned data.
+clean_has_data = True
+
+try:
+        clean_changes_df = spark.read \
+                .option("readChangeFeed", "true") \
+                .option("startingVersion", 0) \
+                .table(output_table_name)
+        
+        if clean_changes_df.count() != 0:
+                last_change = clean_changes_df.select("_commit_timestamp").orderBy("_commit_timestamp", ascending=False).first()[0]
+                print(last_change)
+                clean_has_data = True
+        else:
+                clean_has_data = False
+except AnalysisException as e:
         print(str(e))
+        clean_has_data = False
+
+if debug:
+        print("Clean has data: " + str(clean_has_data))
+
+
 
 
 # COMMAND ----------
 
+if debug and clean_has_data:
+    pre_update_df = spark.read.table(output_table_name)
+    print("Before update count: " + str(pre_update_df.count()))
 
-# Get last change from the cleaned data.
-clean_changes_df = spark.read \
-        .option("readChangeFeed", "true") \
-        .option("startingVersion", 0) \
-        .table(output_table_name)
-
-if debug:
-    display(clean_changes_df)
-
-if clean_changes_df.count() != 0:
-        last_change = clean_changes_df.select("_commit_timestamp").orderBy("_commit_timestamp", ascending=False).first()[0]
-        print(last_change)
 
 # COMMAND ----------
 
 
 # Find the changes in the Bronze ingest table.  
-found_changes = True # Will be set to False if no changes.
+found_ingest_changes = True # Will be set to False if no changes.
 
-# If the clean table is empty, get all the changes.
-if clean_changes_df.count() == 0:
+# If the clean table has no data, get all the changes.
+if clean_has_data == False:
         ingest_changes_df = spark.read \
                 .option("readChangeFeed", "true") \
                 .option("startingVersion", 0) \
                 .table(input_table_name)
-# If the clean table has rows, get the changes since the last change.  If there are no changes, an exception will be 
+# If the clean table has data, get the ingested changes since the last change.  If there are no changes to ingestion data, an exception will be 
 # thrown, caught, and found_changes will be set to False.
 else:
         try:
@@ -95,25 +103,33 @@ else:
         except AnalysisException as e:
                 if "DELTA_TIMESTAMP_GREATER_THAN_COMMIT" in str(e):
                         print("No changes found after the last commit timestamp.")
-                found_changes = False
+                found_ingest_changes = False
 
-if debug and found_changes:
-    display(ingest_changes_df)
+if debug:
+        if found_ingest_changes:
+                display(ingest_changes_df)
+        else:
+                print("No ingest changes found.")
 
 
 # COMMAND ----------
 
 # Drop the change tracking information from the ingest changes.
-if found_changes:
+if found_ingest_changes:
     ingest_changes_df = ingest_changes_df.drop("_rescued_data", "_change_type", "_commit_version", "_commit_timestamp") 
     if debug:
         display(ingest_changes_df)
 
 # COMMAND ----------
 
+max_time_df = ingest_changes_df.select("EndDateTime").distinct().orderBy("EndDateTime", ascending=True)
+display(max_time_df)
+
+# COMMAND ----------
+
 # Upsert the changes to the clean table
-if found_changes:
-    if clean_changes_df.count() != 0:
+if found_ingest_changes:
+    if clean_has_data:
         # Convert the DataFrame to a DeltaTable
         clean_table = DeltaTable.forName(spark, output_table_name)
 
@@ -131,10 +147,6 @@ if found_changes:
                 .mode("overwrite") \
                 .option("mergeSchema", "True") \
                 .save(MDM_CLEANED_PATH)
-
-# COMMAND ----------
-
-
 
 # COMMAND ----------
 

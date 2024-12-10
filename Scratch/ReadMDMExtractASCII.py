@@ -32,8 +32,17 @@ schema = StructType([
 
 # COMMAND ----------
 
-df = spark.read.csv(CONTAINER_URI_PATH + "MDMLandingZone", schema=schema, header=True)
+df = spark.read.format("csv").option("header", True).option("compression", "gzip").schema(schema).load(CONTAINER_URI_PATH + "MDMLandingZone", schema=schema, header=True)
 display(df)
+
+# COMMAND ----------
+
+from pyspark.sql.functions import col
+
+aug_changes_df = df.filter(col('EndDateTime') < '2024-12-01')
+display(aug_changes_df)
+print(df.count())
+print(aug_changes_df.count())
 
 # COMMAND ----------
 
