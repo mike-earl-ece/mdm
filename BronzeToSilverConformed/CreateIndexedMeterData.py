@@ -102,11 +102,25 @@ if debug:
 
 # COMMAND ----------
 
+# When an update happens on the input table, there are two rows added to the change list - one representing the new row and one representing the old row.  
+# We need to remove the old row from the change set by filtering out _change_types with the values update_preimage.
+clean_changes_df = clean_changes_df.filter(col('_change_type') != "update_preimage")
+
+# COMMAND ----------
+
 # Clean up changes to import
 if found_clean_changes:
     clean_changes_df = clean_changes_df.drop("_rescued_data", "_change_type", "_commit_version", "_commit_timestamp") 
     if debug:
         display(clean_changes_df)
+
+# COMMAND ----------
+
+# Check for duplicates on the input table.
+if debug and found_clean_changes:
+    duplicates_df = clean_changes_df.groupBy(clean_changes_df.columns).count().filter("count > 1")
+    if debug:
+        display(duplicates_df)
 
 # COMMAND ----------
 

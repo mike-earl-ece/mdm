@@ -22,6 +22,8 @@ INDEXED_CALENDAR_PATH = CONTAINER_URI_PATH + "SilverConformed/IndexedCalendar/"
 MDM_INDEXED_PATH = CONTAINER_URI_PATH + "SilverConformed/MDM/Indexed/"
 MDM_INDEXED_TABLE = "default.silverconformed_mdm_indexed"
 
+# Silver to Gold
+MDM_DIAGNOSTICS_PATH = CONTAINER_URI_PATH + "Gold/MDM/Diagnostics/"
 
 
 # COMMAND ----------
