@@ -173,7 +173,7 @@ if debug:
 
 # COMMAND ----------
 
-new_data_df = clean_changes_df.join(cal_df, on=["Year","Month","Day","Hour", "Minute"], how="leftouter")
+new_data_df = clean_changes_filter_df.join(cal_df, on=["Year","Month","Day","Hour", "Minute"], how="leftouter")
 
 if debug:
     display(new_data_df)
