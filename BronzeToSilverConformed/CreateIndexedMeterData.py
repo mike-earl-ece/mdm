@@ -37,29 +37,25 @@ if debug:
 
 # COMMAND ----------
 
-# Find the last update to the indexed meter data.
-index_has_data = True
+# Get last change from the indexed data history.
+from delta.tables import *
 
-try:
-        indexed_changes_df = spark.read \
-                .option("readChangeFeed", "true") \
-                .option("startingVersion", 0) \
-                .table(output_table_name)
-        if debug:
-                display(indexed_changes_df)
+index_table = DeltaTable.forPath(spark, MDM_INDEXED_PATH)
+history_df = index_table.history()
 
-        if indexed_changes_df.count() != 0:
-                last_change = indexed_changes_df.select("_commit_timestamp").orderBy("_commit_timestamp", ascending=False).first()[0]
-                print(last_change)
-                index_has_data = True
-        else:
-                index_has_data = False
-except AnalysisException as e:
-        print(str(e))
-        index_has_data = False
+merge_history_df = history_df.filter(col('operation')=="MERGE")
+
+if (merge_history_df.count() > 0):
+    last_change = merge_history_df.select("timestamp").orderBy("timestamp", ascending=False).first()[0]
+    index_has_data = True
+else:
+    index_has_data = False
 
 if debug:
-        print("Index has data: " + str(index_has_data))
+    display(history_df)
+    print(index_has_data)
+    print(last_change)
+
 
 # COMMAND ----------
 

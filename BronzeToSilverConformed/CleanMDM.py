@@ -48,29 +48,24 @@ if debug:
 
 # COMMAND ----------
 
-# Get last change from the cleaned data.
-clean_has_data = True
+# Get last change from the cleaned data history.
+from delta.tables import *
 
-try:
-        clean_changes_df = spark.read \
-                .option("readChangeFeed", "true") \
-                .option("startingVersion", 0) \
-                .table(output_table_name)
-        
-        if clean_changes_df.count() != 0:
-                last_change = clean_changes_df.select("_commit_timestamp").orderBy("_commit_timestamp", ascending=False).first()[0]
-                print(last_change)
-                clean_has_data = True
-        else:
-                clean_has_data = False
-except AnalysisException as e:
-        print(str(e))
-        clean_has_data = False
+clean_table = DeltaTable.forPath(spark, MDM_CLEANED_PATH)
+history_df = clean_table.history()
+
+merge_history_df = history_df.filter(col('operation')=="MERGE")
+
+if (merge_history_df.count() > 0):
+    last_change = merge_history_df.select("timestamp").orderBy("timestamp", ascending=False).first()[0]
+    clean_has_data = True
+else:
+    clean_has_data = False
 
 if debug:
-        print("Clean has data: " + str(clean_has_data))
-
-
+    display(history_df)
+    print(clean_has_data)
+    print(last_change)
 
 
 # COMMAND ----------
