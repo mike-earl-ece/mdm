@@ -15,6 +15,9 @@ from math import floor
 def get_time_hour_from_interval(interval):
     
     hour = floor((interval)/4)
+
+#    if hour==24:  # end of day should be 0:00
+#        hour=0
     
     increment = interval%4
     
@@ -36,7 +39,7 @@ print(get_time_hour_from_interval(96))
 
 #%%
 # Create a daily data frame.
-day_df = pd.DataFrame(columns=["Date", "TimeStamp", "Year", "Month", "Day", "Time", "Hour", "Minute", "Interval"], index=range(1,97))
+day_df = pd.DataFrame(columns=["Date", "TimeStamp", "Year", "Month", "Day", "Time", "Hour", "Minute", "Interval"], index=range(0,96))
 for index, row in day_df.iterrows():
     row.Interval = index
     row.Hour, row.Time = get_time_hour_from_interval(index)
