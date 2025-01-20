@@ -32,6 +32,16 @@ schema = StructType([
 
 # COMMAND ----------
 
+print(CONTAINER_URI_PATH)
+
+# COMMAND ----------
+
+# Look at what gets extracted for a single day.
+df = spark.read.format("csv").option("header", True).schema(schema).load("abfss://meter-data-test@ecemdmstore.dfs.core.windows.net/" + "TestData/dfroslie_test_single_day-20250101-20250102-1737149538905.csv", schema=schema, header=True)
+display(df)
+
+# COMMAND ----------
+
 df = spark.read.format("csv").option("header", True).option("compression", "gzip").schema(schema).load(CONTAINER_URI_PATH + "MDMLandingZone", schema=schema, header=True)
 display(df)
 
