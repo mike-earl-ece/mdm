@@ -54,7 +54,8 @@ else:
 if debug:
     display(history_df)
     print(index_has_data)
-    print(last_change)
+    if index_has_data:
+        print(last_change)
 
 
 # COMMAND ----------
@@ -155,24 +156,73 @@ if debug:
 
 # COMMAND ----------
 
-# Join datasets by time.  Use the ending time for the meter data.
+# Join datasets by time.  We want the meter sample index for both the start and end times.
 
-# Add time columns to the cleaned data for the join.
-clean_changes_filter_df = clean_changes_filter_df.withColumn("Year", year(col("EndDateTime"))) \
-                                    .withColumn("Month", month(col("EndDateTime"))) \
-                                    .withColumn("Day", day(col("EndDateTime"))) \
-                                    .withColumn("Hour", hour(col("EndDateTime"))) \
-                                    .withColumn("Minute", minute(col("EndDateTime")))
+# Add time columns to the cleaned data for the joins.
+clean_changes_filter_df = clean_changes_filter_df.withColumn("StartYear", year(col("StartDateTime"))) \
+                                    .withColumn("StartMonth", month(col("StartDateTime"))) \
+                                    .withColumn("StartDay", day(col("StartDateTime"))) \
+                                    .withColumn("StartHour", hour(col("StartDateTime"))) \
+                                    .withColumn("StartMinute", minute(col("StartDateTime")))
+clean_changes_filter_df = clean_changes_filter_df.withColumn("EndYear", year(col("EndDateTime"))) \
+                                    .withColumn("EndMonth", month(col("EndDateTime"))) \
+                                    .withColumn("EndDay", day(col("EndDateTime"))) \
+                                    .withColumn("EndHour", hour(col("EndDateTime"))) \
+                                    .withColumn("EndMinute", minute(col("EndDateTime")))
 
 if debug:
     display(clean_changes_filter_df)
 
 # COMMAND ----------
 
-new_data_df = clean_changes_filter_df.join(cal_df, on=["Year","Month","Day","Hour", "Minute"], how="leftouter")
+new_data_start_df = clean_changes_filter_df.join(cal_df, (clean_changes_filter_df.StartYear == cal_df.Year) & \
+                                         (clean_changes_filter_df.StartMonth == cal_df.Month) & \
+                                             (clean_changes_filter_df.StartDay == cal_df.Day) & \
+                                                (clean_changes_filter_df.StartHour == cal_df.Hour) & 
+                                                 (clean_changes_filter_df.StartMinute == cal_df.Minute), how="leftouter") 
+
+new_data_start_df = new_data_start_df.drop('Year', 'Month', 'Day', 'Hour', 'Minute', 'Date', 'TimeStamp', 'Time')
+new_data_start_df = new_data_start_df.drop('StartYear', 'StartMonth', 'StartDay', 'StartHour', 'StartMinute')
+
+new_data_start_df = new_data_start_df.withColumnRenamed("MeterSampleIndex", "StartMeterSampleIndex") \
+                            .withColumnRenamed("Interval", "StartInterval")
+
+if debug:
+    display(new_data_start_df)
+
+# COMMAND ----------
+
+new_data_df = new_data_start_df.join(cal_df, (new_data_start_df.EndYear == cal_df.Year) & \
+                                         (new_data_start_df.EndMonth == cal_df.Month) & \
+                                             (new_data_start_df.EndDay == cal_df.Day) & \
+                                                (new_data_start_df.EndHour == cal_df.Hour) & 
+                                                 (new_data_start_df.EndMinute == cal_df.Minute), how="leftouter") 
+
+new_data_df = new_data_df.drop('TimeStamp', 'Time', 'Year', 'Month', 'Day', 'Hour', 'Minute', 'Date', 'TimeStamp', 'Time')
+new_data_df = new_data_df.drop('EndYear', 'EndMonth', 'EndDay', 'EndHour', 'EndMinute')
+
+new_data_df = new_data_df.withColumnRenamed("MeterSampleIndex", "EndMeterSampleIndex") \
+                            .withColumnRenamed("Interval", "EndInterval")
 
 if debug:
     display(new_data_df)
+
+# COMMAND ----------
+
+# Check for null sample indexes.
+null_check_df = new_data_df.filter(col("StartMeterSampleIndex").isNull() | col("EndMeterSampleIndex").isNull())
+
+if null_check_df.count() > 0:
+    print(null_check_df.count())
+    display(null_check_df)
+#    raise Exception("CreateIndexedMeterData: Null MeterSampleIndex exists. Execution aborted.  Please investigate.")
+else:
+    print("CreateIndexedMeterData: No null MeterSampleIndex found.")
+
+
+# COMMAND ----------
+
+display(new_data_df.filter(col('MeterNumber')==33160403))
 
 # COMMAND ----------
 
@@ -214,4 +264,4 @@ if debug:
 # COMMAND ----------
 
 # Clean up history
-indexed_table.vacuum()
+index_table.vacuum()

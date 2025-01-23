@@ -28,6 +28,10 @@ uri = CONTAINER_URI_PATH
 output_path = INDEXED_CALENDAR_PATH
 input_path = uri + "Bronze/IndexedCalendar/Meter15Calendar.csv"
 
+if debug:
+    print(input_path)
+    print(output_path)
+
 # COMMAND ----------
 
 cal_df =  spark.read.option("header", True).csv(input_path)
@@ -45,6 +49,7 @@ cal_types_df = cal_df.withColumn('Date', to_date(cal_df.Date, "yyyy-MM-dd")) \
                      .withColumn('Month', cal_df.Month.cast(IntegerType())) \
                      .withColumn('Day', cal_df.Day.cast(IntegerType())) \
                      .withColumn('Hour', cal_df.Hour.cast(IntegerType())) \
+                     .withColumn('Minute', cal_df.Minute.cast(IntegerType())) \
                      .withColumn('Interval', cal_df.Interval.cast(IntegerType())) \
                      .withColumn('MeterSampleIndex', cal_df.MeterSampleIndex.cast(IntegerType()))  
 

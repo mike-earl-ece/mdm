@@ -65,7 +65,8 @@ else:
 if debug:
     display(history_df)
     print(clean_has_data)
-    print(last_change)
+    if clean_has_data:
+        print(last_change)
 
 
 # COMMAND ----------
