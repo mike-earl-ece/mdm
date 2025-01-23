@@ -8,12 +8,12 @@
 # Constants
 
 # Storage
-#CONTAINER_URI_PATH = "abfss://meter-data@ecemdmstore.dfs.core.windows.net/"  # Production
-CONTAINER_URI_PATH = "abfss://meter-data-test@ecemdmstore.dfs.core.windows.net/"  # Test
+CONTAINER_URI_PATH = "abfss://meter-data@ecemdmstore.dfs.core.windows.net/"  # Production
+#CONTAINER_URI_PATH = "abfss://meter-data-test@ecemdmstore.dfs.core.windows.net/"  # Test
 
 # Schema - used for pathing below.
-#SCHEMA = "default"  # Production
-SCHEMA = "test"   # Test
+SCHEMA = "default"  # Production
+#SCHEMA = "test"   # Test
 
 # Ingestion
 MDM_LANDING_PATH = CONTAINER_URI_PATH + "MDMLandingZone" 
