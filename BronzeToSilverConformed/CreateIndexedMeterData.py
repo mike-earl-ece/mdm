@@ -43,7 +43,7 @@ from delta.tables import *
 index_table = DeltaTable.forPath(spark, MDM_INDEXED_PATH)
 history_df = index_table.history()
 
-merge_history_df = history_df.filter(col('operation')=="MERGE")
+merge_history_df = history_df.filter((col('operation')=="MERGE") | (col('operation')=="WRITE"))
 
 if (merge_history_df.count() > 0):
     last_change = merge_history_df.select("timestamp").orderBy("timestamp", ascending=False).first()[0]
@@ -53,7 +53,7 @@ else:
 
 if debug:
     display(history_df)
-    print(index_has_data)
+    print("Index has data:" + str(index_has_data))
     if index_has_data:
         print(last_change)
 
@@ -71,11 +71,9 @@ if debug and index_has_data:
 # Get changes from the cleaned file since the last update to the indexed meter data.
 found_clean_changes = True # Will be set to False if no changes.
 
-# If the clean table is empty, get all the changes.
+# If the clean table is empty, get all the data.
 if index_has_data == False:
         clean_changes_all_df = spark.read \
-                .option("readChangeFeed", "true") \
-                .option("startingVersion", 0) \
                 .table(input_table_name)
 # If the indexed table has rows, get the changes since the last change.  If there are no changes, an exception will be 
 # thrown, caught, and found_changes will be set to False.
@@ -105,21 +103,24 @@ if found_clean_changes == False:
 
 # When an update happens on the input table, there are two rows added to the change list - one representing the new row and one representing the old row.  
 # We need to remove the old row from the change set by filtering out _change_types with the values update_preimage.
-clean_changes_filter_df = clean_changes_all_df.filter(col('_change_type') != "update_preimage")
+if index_has_data:
+    clean_changes_filter_df = clean_changes_all_df.filter(col('_change_type') != "update_preimage")
 
-# Deletes are unlikely, but can happen if some maintenance was done on the input file.  We need to remove these from the change set.
-clean_changes_filter_df = clean_changes_filter_df.filter(col('_change_type') != "delete")
+    # Deletes are unlikely, but can happen if some maintenance was done on the input file.  We need to remove these from the change set.
+    clean_changes_filter_df = clean_changes_filter_df.filter(col('_change_type') != "delete")
 
-if debug:
-    print(clean_changes_filter_df.count())
+    if debug:
+        print(clean_changes_filter_df.count())
 
 # COMMAND ----------
 
 # Clean up changes to import
-if found_clean_changes:
+if index_has_data:
     clean_changes_filter_df = clean_changes_filter_df.drop("_rescued_data", "_change_type", "_commit_version", "_commit_timestamp") 
     if debug:
         display(clean_changes_filter_df)
+else:
+    clean_changes_filter_df = clean_changes_all_df
 
 # COMMAND ----------
 
@@ -144,7 +145,7 @@ if debug:
   display(duplicates_df.orderBy("count", ascending=False))
 
 if duplicates_df.count() > 0:
-  raise Exception("CreateIndexedMeterDAta: Duplicates exist in clean data before insert to index. Aborting script. Please review the data and correct the issue.")
+  raise Exception("CreateIndexedMeterData: Duplicates exist in clean data before insert to index. Aborting script. Please review the data and correct the issue.")
 
 # COMMAND ----------
 
@@ -204,6 +205,8 @@ new_data_df = new_data_df.drop('EndYear', 'EndMonth', 'EndDay', 'EndHour', 'EndM
 new_data_df = new_data_df.withColumnRenamed("MeterSampleIndex", "EndMeterSampleIndex") \
                             .withColumnRenamed("Interval", "EndInterval")
 
+new_data_df = new_data_df.withColumn("SampleRate", (col("EndMeterSampleIndex") - col("StartMeterSampleIndex")) * 5)
+
 if debug:
     display(new_data_df)
 
@@ -219,10 +222,6 @@ if null_check_df.count() > 0:
 else:
     print("CreateIndexedMeterData: No null MeterSampleIndex found.")
 
-
-# COMMAND ----------
-
-display(new_data_df.filter(col('MeterNumber')==33160403))
 
 # COMMAND ----------
 
