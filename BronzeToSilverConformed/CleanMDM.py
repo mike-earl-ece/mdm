@@ -122,12 +122,16 @@ if found_ingest_changes == False:
 # We need to remove the old row from the change set by filtering out _change_types with the values update_preimage.
 ingest_changes_all_df = ingest_changes_all_df.filter(col('_change_type') != "update_preimage")
 
+# Deletes are unlikely, but can happen if some maintenance was done on the input file.  We need to remove these from the change set.
+ingest_changes_all_df = ingest_changes_all_df.filter(col('_change_type') != "delete")
+
 if debug:
   print(ingest_changes_all_df.count())
 
 # COMMAND ----------
 
-# MDM extract appears to have some duplication issues. Deal with that here.
+# MDM extract appears to have some duplication issues. This can also be due to backfilling 
+# or overlapping ingestions with changed values.  Deal with that here.
 
 # First, there are some duplicates in the data, so drop these after removing the metadata columns.
 ingest_changes_df = ingest_changes_all_df.drop("_rescued_data", "_change_type", "_commit_version", "_commit_timestamp") 
@@ -158,6 +162,9 @@ if duplicates_df.count() > 0:
 
   # Now handle the case where the AMIValue is 0 and the VEEValue is 0 in the duplicate set.
   ingest_valid_df = ingest_valid_df.filter(~( (col('VEEValue') == 0) & (col('AMIValue') == 0) & (col('DupCount') == 2) ) )
+
+  # Take this one step further and remove cases where the AMIValue is 0 in the duplicate set.
+  ingest_valid_df = ingest_valid_df.filter(~( (col('AMIValue') == 0) & (col('DupCount') == 2) ) )
 
   ingest_valid_df = ingest_valid_df.drop('count', 'DupCount')
 
