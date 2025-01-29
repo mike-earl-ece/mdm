@@ -54,7 +54,7 @@ from delta.tables import *
 clean_table = DeltaTable.forPath(spark, MDM_CLEANED_PATH)
 history_df = clean_table.history()
 
-merge_history_df = history_df.filter(col('operation')=="MERGE")
+merge_history_df = history_df.filter((col('operation')=="MERGE") | (col('operation')=="WRITE"))
 
 if (merge_history_df.count() > 0):
     last_change = merge_history_df.select("timestamp").orderBy("timestamp", ascending=False).first()[0]
@@ -176,6 +176,15 @@ else:
 
 # COMMAND ----------
 
+# 01/28/2025 - Resolve issue with a zip code change on a specific meter.  
+# Remove the problem records.
+ingest_valid_df = ingest_valid_df.filter(~( (col("MeterNumber") == 33518435) & (col("Channel") == 4) & (col("ZipCode") == "55008") & (col("StartDateTime") <= "2024-05-31T04:00:00.000+00:00") ) )
+
+if debug:
+    print(ingest_valid_df.count())
+
+# COMMAND ----------
+
  # Check for duplicates at this point,  If any exist, display some debug information and abort.
 duplicates_df = ingest_valid_df.groupBy("MeterNumber", "UnitOfMeasure", "FlowDirection", "Channel", "StartDateTime", "EndDateTime")\
                   .count().filter("count > 1")
@@ -206,15 +215,15 @@ if found_ingest_changes:
 
         # Do an upsert of the changes.
         clean_table.alias('clean') \
-            .merge(ingest_changes_df.alias('ingest'), 
+            .merge(ingest_valid_df.alias('ingest'), 
             'clean.UnitOfMeasure = ingest.UnitOfMeasure AND clean.MeterNumber = ingest.MeterNumber AND clean.Channel = ingest.Channel AND clean.FlowDirection = ingest.FlowDirection AND clean.StartDateTime = ingest.StartDateTime AND clean.EndDateTime = ingest.EndDateTime') \
                 .whenMatchedUpdateAll() \
                 .whenNotMatchedInsertAll() \
                 .execute()
     # Else just insert the new data (clean table is empty)
     else:  
-        ingest_changes_df = ingest_changes_df.dropDuplicates()
-        ingest_changes_df.write.format("delta") \
+        ingest_valid_df = ingest_valid_df.dropDuplicates()
+        ingest_valid_df.write.format("delta") \
                 .mode("overwrite") \
                 .option("mergeSchema", "True") \
                 .save(MDM_CLEANED_PATH)
@@ -236,6 +245,11 @@ dup_count = duplicates_out_df.count()
 if dup_count > 0: 
   print(dup_count)
   display(duplicates_out_df)
+
+  clean_out_dup_df = duplicates_out_df.join(clean_out_df, ["MeterNumber", "UnitOfMeasure", "FlowDirection", "Channel", "StartDateTime", "EndDateTime"], "left")
+  print(clean_out_dup_df.count())
+  display(clean_out_dup_df.orderBy(["MeterNumber", "StartDateTime"], ascending=True))
+
 
   raise Exception("Duplicates found in the clean table.  Please investigate.")
 
