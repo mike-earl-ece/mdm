@@ -117,10 +117,11 @@ if index_has_data:
 # Clean up changes to import
 if index_has_data:
     clean_changes_filter_df = clean_changes_filter_df.drop("_rescued_data", "_change_type", "_commit_version", "_commit_timestamp") 
-    if debug:
-        display(clean_changes_filter_df)
 else:
     clean_changes_filter_df = clean_changes_all_df
+
+if debug:
+    display(clean_changes_filter_df)
 
 # COMMAND ----------
 
@@ -145,7 +146,15 @@ if debug:
   display(duplicates_df.orderBy("count", ascending=False))
 
 if duplicates_df.count() > 0:
+  print("Duplicates still exist: " + str(duplicates_df.count()))
+  # Join with the original dataset and display. 
+  clean_changes_dup_df = duplicates_df.join(clean_changes_all_df, ["MeterNumber", "UnitOfMeasure", "FlowDirection", "Channel", "StartDateTime", "EndDateTime"], "left")
+  print(clean_changes_dup_df.count())
+  display(clean_changes_dup_df)
+
   raise Exception("CreateIndexedMeterData: Duplicates exist in clean data before insert to index. Aborting script. Please review the data and correct the issue.")
+else:
+  print("No duplicates found on the input data.")
 
 # COMMAND ----------
 
@@ -176,6 +185,7 @@ if debug:
 
 # COMMAND ----------
 
+# Add the start sample index.
 new_data_start_df = clean_changes_filter_df.join(cal_df, (clean_changes_filter_df.StartYear == cal_df.Year) & \
                                          (clean_changes_filter_df.StartMonth == cal_df.Month) & \
                                              (clean_changes_filter_df.StartDay == cal_df.Day) & \
@@ -193,6 +203,7 @@ if debug:
 
 # COMMAND ----------
 
+# Add the end sample index.
 new_data_df = new_data_start_df.join(cal_df, (new_data_start_df.EndYear == cal_df.Year) & \
                                          (new_data_start_df.EndMonth == cal_df.Month) & \
                                              (new_data_start_df.EndDay == cal_df.Day) & \
@@ -218,7 +229,7 @@ null_check_df = new_data_df.filter(col("StartMeterSampleIndex").isNull() | col("
 if null_check_df.count() > 0:
     print(null_check_df.count())
     display(null_check_df)
-#    raise Exception("CreateIndexedMeterData: Null MeterSampleIndex exists. Execution aborted.  Please investigate.")
+    raise Exception("CreateIndexedMeterData: Null MeterSampleIndex exists. Execution aborted.  Please investigate.")
 else:
     print("CreateIndexedMeterData: No null MeterSampleIndex found.")
 
