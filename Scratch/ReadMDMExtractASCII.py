@@ -42,8 +42,24 @@ display(df)
 
 # COMMAND ----------
 
-df = spark.read.format("csv").option("header", True).option("compression", "gzip").schema(schema).load(CONTAINER_URI_PATH + "MDMLandingZone", schema=schema, header=True)
-display(df)
+from pyspark.sql.functions import col
+
+df = spark.read.format("csv").option("header", True).option("compression", "gzip").schema(schema).load(CONTAINER_URI_PATH + "MDMLandingZone/backfill-20241029-20241115-1738352817373.csv.gz", schema=schema, header=True)
+
+dup_issue_df = df.filter((col('MeterNumber')==16116741) & (col('StartDateTime') == '2024-11-03T06:00:00.000+00:00'))
+display(dup_issue_df)
+
+dup_issue2_df = df.filter((col('MeterNumber')==16116744) & (col('StartDateTime') == '2024-11-03T06:00:00.000+00:00'))
+display(dup_issue2_df)
+
+
+
+# COMMAND ----------
+
+from pyspark.sql.functions import col
+dup_issue_df = df.filter((col('MeterNumber')==16116741) & (col('StartDateTime') == '2024-11-03T06:00:00.000+00:00'))
+
+display(dup_issue_df)
 
 # COMMAND ----------
 

@@ -133,19 +133,22 @@ if debug:
 # MDM extract appears to have some duplication issues. This can also be due to backfilling 
 # or overlapping ingestions with changed values.  Deal with that here.
 
-# First, there are some duplicates in the data, so drop these after removing the metadata columns.
-ingest_changes_df = ingest_changes_all_df.drop("_rescued_data", "_change_type", "_commit_version", "_commit_timestamp") 
+# First, select the relevant columns to store in the silver tier.  These are only the columns relevant to the meter readings.  Columns 
+# related to rates, substations, etc are dimensional and not needed here.
+ingest_changes_df = ingest_changes_all_df.select("MeterNumber", "UnitOfMeasure", "FlowDirection", "Channel", "StartDateTime", "EndDateTime","AMIValue", "VEEValue")
+
+# Next, there are some duplicates in the data, so drop these.
 ingest_changes_df = ingest_changes_df.dropDuplicates()
 
 if debug:
   print(ingest_changes_df.count())
 
-# Second, there are some rows that have duplicate metadata columns (see below), but with an AMIValue equal to 0 and a null VEEValue.  These rows need to be removed.
+# Next, there are some rows that have duplicate metadata columns (see below), but with an AMIValue equal to 0 and a null VEEValue.  These rows need to be removed.
 # Find duplicates.
 subset_df = ingest_changes_df.select("MeterNumber", "UnitOfMeasure", "FlowDirection", "Channel", "StartDateTime", "EndDateTime")
 duplicates_df = subset_df.groupBy("MeterNumber", "UnitOfMeasure", "FlowDirection", "Channel", "StartDateTime", "EndDateTime").count().filter("count > 1")
 if debug:
-  print(duplicates_df.count())
+  print("Total duplicates: " + str(duplicates_df.count()))
 
 if duplicates_df.count() > 0:
   # Join back to main dataset; the count column will track duplicates.
@@ -176,12 +179,28 @@ else:
 
 # COMMAND ----------
 
-# 01/28/2025 - Resolve issue with a zip code change on a specific meter.  
-# Remove the problem records.
-ingest_valid_df = ingest_valid_df.filter(~( (col("MeterNumber") == 33518435) & (col("Channel") == 4) & (col("ZipCode") == "55008") & (col("StartDateTime") <= "2024-05-31T04:00:00.000+00:00") ) )
+# 11/3/2024 - About 2400 timestamps had duplicate readings that were nearly identical, but not exactly.  This was daylight savings transition, so 
+# we're speculating that this might be related.  For these values, we're going to pick the larger magnitude reading and move on.
+# duplicates_df = ingest_valid_df.groupBy("MeterNumber", "UnitOfMeasure", "FlowDirection", "Channel", "StartDateTime", "EndDateTime")\
+#                   .count().filter("count > 1")
+# print(duplicates_df.count())
 
-if debug:
-    print(ingest_valid_df.count())
+# ingest_110324fix_df = ingest_valid_df.groupBy("MeterNumber", "UnitOfMeasure", "FlowDirection", "Channel", "StartDateTime", "EndDateTime") \
+#                             .agg(max(col("AMIValue")).alias("AMIValue"), max(col("VEEValue")).alias("VEEValue"))
+
+# Validate the previous did the right thing.
+
+# Compare counts - should be reduced by the number of duplicates from above.
+# print(ingest_valid_df.count() - ingest_110324fix_df.count())
+# print(ingest_110324fix_df.count())
+
+# Compare schemas
+# ingest_valid_df.printSchema()
+# ingest_110324fix_df.printSchema()
+
+#  Assign the fix to ingest_valid_df.  The next cell will validate no remaining duplicates.
+# ingest_valid_df = ingest_110324fix_df
+  
 
 # COMMAND ----------
 

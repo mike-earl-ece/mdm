@@ -14,6 +14,8 @@ set_spark_config()
 
 # COMMAND ----------
 
+from pyspark.sql.functions import col
+
 uri = CONTAINER_URI_PATH
 
 input_data_path = f"{uri}/Bronze/iVUE/DIM_MeterInfo/DIM_MeterInfo.csv"
