@@ -41,19 +41,17 @@ if debug:
 # COMMAND ----------
 
 from pyspark.sql.functions import year, month, day
-
-index_df = index_df.withColumn("Year", year(col("StartDateTime"))) \
+daily_df = index_df.withColumn("Year", year(col("StartDateTime"))) \
                     .withColumn("Month", month(col("StartDateTime"))) \
                         .withColumn("Day", day(col("StartDateTime")))
 
 # COMMAND ----------
 
-# Aggregate samples daily by substation and rate.
-aggregated_df = index_df.groupBy("SubstationCode", "SubstationDescription", "RateCode", "Year", "Month", "Day").count()
-
-if debug:
-    display(aggregated_df)
+daily_df.write.format("delta").mode("overwrite").save(MDM_DIAGNOSTICS_PATH)
 
 # COMMAND ----------
 
-aggregated_df.write.format("delta").mode("overwrite").save(MDM_DIAGNOSTICS_PATH)
+# Clean history
+daily_table = DeltaTable.forPath(spark, MDM_DIAGNOSTICS_PATH)
+
+daily_table.vacuum()

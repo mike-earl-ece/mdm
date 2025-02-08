@@ -106,3 +106,17 @@ query.awaitTermination()
 if debug:
   post_update_df = spark.read.table(table_name)
   print("After update count: " + str(post_update_df.count()))
+
+# COMMAND ----------
+
+from delta.tables import DeltaTable
+
+# Clean history
+bronze_table = DeltaTable.forName(spark, table_name)
+
+bronze_table.vacuum()
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
