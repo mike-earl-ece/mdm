@@ -41,9 +41,15 @@ if debug:
 # COMMAND ----------
 
 from pyspark.sql.functions import year, month, day
-daily_df = index_df.withColumn("Year", year(col("StartDateTime"))) \
+index_df = index_df.withColumn("Year", year(col("StartDateTime"))) \
                     .withColumn("Month", month(col("StartDateTime"))) \
                         .withColumn("Day", day(col("StartDateTime")))
+
+# COMMAND ----------
+
+from pyspark.sql.functions import count
+
+daily_df = index_df.groupBy( "Year", "Month", "Day").agg(count("*").alias("count"))
 
 # COMMAND ----------
 
