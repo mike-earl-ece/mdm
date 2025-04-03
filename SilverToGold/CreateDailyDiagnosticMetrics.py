@@ -49,11 +49,11 @@ index_df = index_df.withColumn("Year", year(col("StartDateTime"))) \
 
 from pyspark.sql.functions import count
 
-daily_df = index_df.groupBy( "Year", "Month", "Day").agg(count("*").alias("count"))
+daily_df = index_df.groupBy("MeterNumber", "Year", "Month", "Day").agg(count("*").alias("count"))
 
 # COMMAND ----------
 
-daily_df.write.format("delta").mode("overwrite").save(MDM_DIAGNOSTICS_PATH)
+daily_df.write.format("delta").mode("overwrite").option("mergeSchema", "true").save(MDM_DIAGNOSTICS_PATH)
 
 # COMMAND ----------
 

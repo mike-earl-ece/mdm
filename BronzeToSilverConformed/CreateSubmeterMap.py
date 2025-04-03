@@ -26,17 +26,10 @@ debug = 1
 
 meter_info_df =  spark.read.option("header", True).csv(input_data_path)
 
-print(meter_info_df.count())
-display(meter_info_df)
-display(meter_info_df.select('BI_MTR_NBR').distinct().count())
-
-# COMMAND ----------
-
-display(meter_info_df.filter(col('BI_REGISTER_SET_NBR')!=1))
-
-# COMMAND ----------
-
-display(meter_info_df.filter(col('BI_MTR_NBR')==33535968))
+if debug:
+    print(meter_info_df.count())
+    display(meter_info_df)
+    display(meter_info_df.select('BI_MTR_NBR').distinct().count())
 
 # COMMAND ----------
 
@@ -45,10 +38,10 @@ meter_info_df = meter_info_df.select(['BI_ACCT', 'BI_MTR_NBR', 'BI_MTR_POS_NBR',
 
 sub_meter_df = meter_info_df.filter(meter_info_df.BI_MTR_CONFIG=='S')
 
-
-print(sub_meter_df.count())
-display(sub_meter_df)
-display(sub_meter_df.groupBy("BI_MTR_POS_NBR").count().orderBy("BI_MTR_POS_NBR"))
+if debug:
+    print(sub_meter_df.count())
+    display(sub_meter_df)
+    display(sub_meter_df.groupBy("BI_MTR_POS_NBR").count().orderBy("BI_MTR_POS_NBR"))
 
 # COMMAND ----------
 
@@ -62,17 +55,18 @@ meter_info_for_join_df = meter_info_df.withColumnRenamed('BI_MTR_NBR', 'MainMete
 sub_meter_plus_df = sub_meter_df.join(meter_info_for_join_df, on='BI_ACCT', how='leftouter')
 
 # Make sure all the submeters have other meters associated with the account.
-print("Dataframe count aFter joining with other meters (count should be higher): ", sub_meter_plus_df.count())
-print("Null other meters from dimensions file (should be 0):  ", sub_meter_plus_df.filter(sub_meter_plus_df.MainMeter.isNull()).count())  
+if debug:
+    print("Dataframe count aFter joining with other meters (count should be higher): ", sub_meter_plus_df.count())
+    print("Null other meters from dimensions file (should be 0):  ", sub_meter_plus_df.filter(sub_meter_plus_df.MainMeter.isNull()).count())  
 
 # COMMAND ----------
 
 # Filter down to the rows where the other meter is the main meter.
 sub_meter_main_df = sub_meter_plus_df.filter(sub_meter_plus_df.OtherMeterPosNbr==1)
 
-print("Dataframe count aFter filtering to the main meter (count should be same as original submeter count): ", sub_meter_main_df.count())
-
-display(sub_meter_main_df)
+if debug:
+    print("Dataframe count aFter filtering to the main meter (count should be same as original submeter count): ", sub_meter_main_df.count())
+    display(sub_meter_main_df)
 
 
 # COMMAND ----------
@@ -81,11 +75,8 @@ from pyspark.sql.functions import col, count
 
 duplicate_meters_df = sub_meter_main_df.groupBy('BI_MTR_NBR').agg(count('*').alias('count')).filter(col('count') > 1)
 
-display(duplicate_meters_df)
-
-# COMMAND ----------
-
-display(sub_meter_main_df.filter(col('BI_MTR_NBR')==33535968))
+if debug:
+    display(duplicate_meters_df)
 
 # COMMAND ----------
 
@@ -99,8 +90,9 @@ display(sub_without_main_df)
 # Drop columns that are not interesting and save.
 sub_meter_main_final_df = sub_meter_main_df.drop('OtherMeterPosNbr', 'OtherMeterConfig')
 
-display(sub_meter_main_final_df)
-print(sub_meter_main_final_df.count())
+if debug:
+    display(sub_meter_main_final_df)
+    print(sub_meter_main_final_df.count())
 
 
 # COMMAND ----------
