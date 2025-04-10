@@ -29,10 +29,13 @@ MDM_INDEXED_TABLE = SCHEMA + ".silverconformed_mdm_indexed"
 
 # SilverConformed to SilverEnhanced
 MDM_MAIN_METER_ONLY_DATA_PATH = CONTAINER_URI_PATH + "SilverEnhanced/MDM/MainMeterOnlyData/"
+MDM_MAIN_METER_ONLY_HOURLY_DATA_PATH = CONTAINER_URI_PATH + "SilverEnhanced/MDM/MainMeterOnlyHourlyData/"
 
 # Silver to Gold
 MDM_DIAGNOSTICS_PATH = CONTAINER_URI_PATH + "Gold/MDM/Diagnostics/"
 MDM_MONTH_HOUR_RANK_PATH = CONTAINER_URI_PATH + "Gold/MDM/MonthHourRank/"
+MDM_HOURLY_TOTALS_PATH = CONTAINER_URI_PATH + "Gold/MDM/HourlyTotals/"
+MDM_DAILY_RANK_PATH = CONTAINER_URI_PATH + "Gold/MDM/DailyRank/"
 
 
 # COMMAND ----------
