@@ -17,11 +17,11 @@ set_spark_config()
 # Create an index for n years.
 import pandas as pd
 from datetime import datetime, time, timedelta
-from pyspark.sql.functions import year, month, day, hour, minute, col, monotonically_increasing_id
+from pyspark.sql.functions import year, month, day, hour, minute, col, monotonically_increasing_id, from_utc_timestamp
 
 
 start_year = 2023
-end_year = 2030
+end_year = 2040
 
 # COMMAND ----------
 
@@ -49,17 +49,29 @@ print(type(TimeStamp[0]))
 # COMMAND ----------
 
 # Create a PySpark dataframe with the timestamp.
-timestamps_df = spark.createDataFrame(pd.DataFrame(TimeStamp, columns=["TimeStamp"]))
+timestamps_df = spark.createDataFrame(pd.DataFrame(TimeStamp, columns=["UTCTimeStamp"]))
 display(timestamps_df)
 
 # COMMAND ----------
 
 # Create new columns with information extracted from the timestamp.
-timestamps_df = timestamps_df.withColumn("Year", year(col("TimeStamp"))) \
-                                    .withColumn("Month", month(col("TimeStamp"))) \
-                                    .withColumn("Day", day(col("TimeStamp"))) \
-                                    .withColumn("Hour", hour(col("TimeStamp"))) \
-                                    .withColumn("Minute", minute(col("TimeStamp")))
+timestamps_df = timestamps_df.withColumn("UTCYear", year(col("UTCTimeStamp"))) \
+                                    .withColumn("UTCMonth", month(col("UTCTimeStamp"))) \
+                                    .withColumn("UTCDay", day(col("UTCTimeStamp"))) \
+                                    .withColumn("UTCHour", hour(col("UTCTimeStamp"))) \
+                                    .withColumn("UTCMinute", minute(col("UTCTimeStamp")))
+
+display(timestamps_df)
+
+# COMMAND ----------
+
+# Add a local time timestamp and detail.
+timestamps_df = timestamps_df.withColumn("LocalTimeStamp", from_utc_timestamp(col("UTCTimeStamp"), "America/Chicago")) \
+                                    .withColumn("LocalYear", year(col("LocalTimeStamp"))) \
+                                    .withColumn("LocalMonth", month(col("LocalTimeStamp"))) \
+                                    .withColumn("LocalDay", day(col("LocalTimeStamp"))) \
+                                    .withColumn("LocalHour", hour(col("LocalTimeStamp"))) \
+                                    .withColumn("LocalMinute", minute(col("LocalTimeStamp")))
 
 display(timestamps_df)
 

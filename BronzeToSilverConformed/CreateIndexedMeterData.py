@@ -161,6 +161,9 @@ else:
 # Read the indexed calendar
 cal_df =  spark.read.parquet(INDEXED_CALENDAR_PATH)
 
+# MDM data is UTC based, so drop the Local columns for this process.
+cal_df = cal_df.drop("LocalTimeStamp", "LocalYear", "LocalMonth", "LocalDay", "LocalHour", "LocalMinute")
+
 if debug:
     display(cal_df)
 
@@ -186,13 +189,13 @@ if debug:
 # COMMAND ----------
 
 # Add the start sample index.
-new_data_start_df = clean_changes_filter_df.join(cal_df, (clean_changes_filter_df.StartYear == cal_df.Year) & \
-                                         (clean_changes_filter_df.StartMonth == cal_df.Month) & \
-                                             (clean_changes_filter_df.StartDay == cal_df.Day) & \
-                                                (clean_changes_filter_df.StartHour == cal_df.Hour) & 
-                                                 (clean_changes_filter_df.StartMinute == cal_df.Minute), how="leftouter") 
+new_data_start_df = clean_changes_filter_df.join(cal_df, (clean_changes_filter_df.StartYear == cal_df.UTCYear) & \
+                                         (clean_changes_filter_df.StartMonth == cal_df.UTCMonth) & \
+                                             (clean_changes_filter_df.StartDay == cal_df.UTCDay) & \
+                                                (clean_changes_filter_df.StartHour == cal_df.UTCHour) & 
+                                                 (clean_changes_filter_df.StartMinute == cal_df.UTCMinute), how="leftouter") 
 
-new_data_start_df = new_data_start_df.drop('Year', 'Month', 'Day', 'Hour', 'Minute', 'Date', 'TimeStamp', 'Time')
+new_data_start_df = new_data_start_df.drop('UTCYear', 'UTCMonth', 'UTCDay', 'UTCHour', 'UTCMinute', 'Date', 'UTCTimeStamp', 'Time')
 new_data_start_df = new_data_start_df.drop('StartYear', 'StartMonth', 'StartDay', 'StartHour', 'StartMinute')
 
 new_data_start_df = new_data_start_df.withColumnRenamed("MeterSampleIndex", "StartMeterSampleIndex") \
@@ -204,13 +207,13 @@ if debug:
 # COMMAND ----------
 
 # Add the end sample index.
-new_data_df = new_data_start_df.join(cal_df, (new_data_start_df.EndYear == cal_df.Year) & \
-                                         (new_data_start_df.EndMonth == cal_df.Month) & \
-                                             (new_data_start_df.EndDay == cal_df.Day) & \
-                                                (new_data_start_df.EndHour == cal_df.Hour) & 
-                                                 (new_data_start_df.EndMinute == cal_df.Minute), how="leftouter") 
+new_data_df = new_data_start_df.join(cal_df, (new_data_start_df.EndYear == cal_df.UTCYear) & \
+                                         (new_data_start_df.EndMonth == cal_df.UTCMonth) & \
+                                             (new_data_start_df.EndDay == cal_df.UTCDay) & \
+                                                (new_data_start_df.EndHour == cal_df.UTCHour) & 
+                                                 (new_data_start_df.EndMinute == cal_df.UTCMinute), how="leftouter") 
 
-new_data_df = new_data_df.drop('TimeStamp', 'Time', 'Year', 'Month', 'Day', 'Hour', 'Minute', 'Date', 'TimeStamp', 'Time')
+new_data_df = new_data_df.drop('TimeStamp', 'Time', 'UTCYear', 'UTCMonth', 'UTCDay', 'UTCHour', 'UTCMinute', 'Date', 'UTCTimeStamp', 'Time')
 new_data_df = new_data_df.drop('EndYear', 'EndMonth', 'EndDay', 'EndHour', 'EndMinute')
 
 new_data_df = new_data_df.withColumnRenamed("MeterSampleIndex", "EndMeterSampleIndex") \
