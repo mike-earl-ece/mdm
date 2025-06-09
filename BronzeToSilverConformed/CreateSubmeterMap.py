@@ -16,9 +16,7 @@ set_spark_config()
 
 from pyspark.sql.functions import col
 
-uri = CONTAINER_URI_PATH
-
-input_data_path = f"{uri}/Bronze/iVUE/DIM_MeterInfo/DIM_MeterInfo.csv"
+input_data_path = DIM_METER_INFO_PATH
 
 debug = 1
 
@@ -83,7 +81,8 @@ if debug:
 # Find submeters that don't have a main meter.
 sub_without_main_df = sub_meter_df.join(sub_meter_main_df, on='BI_MTR_NBR', how='leftanti')
 
-display(sub_without_main_df)
+if debug:
+    display(sub_without_main_df)
 
 # COMMAND ----------
 
@@ -97,14 +96,10 @@ if debug:
 
 # COMMAND ----------
 
-# Output to CSV
-csv_out_file = f"{uri}/SilverConformed/iVUE/DIM_SubMeterMap/CSV"
-sub_meter_main_final_df.coalesce(1).write.option("header",True).mode('overwrite').csv(csv_out_file)
-
+# Output to delta
+sub_meter_main_final_df.write.mode('overwrite').format('delta').save(DIM_SUBMETER_MAP_PATH)
 
 # COMMAND ----------
 
-# Output to Parquet
-parquet_out_file = f"{uri}/SilverConformed/iVUE/DIM_SubMeterMap/Parquet"
-sub_meter_main_final_df.coalesce(1).write.option("header",True).mode('overwrite').parquet(parquet_out_file)
-
+# Clean up the delta history.
+spark.sql(f"VACUUM '{DIM_SUBMETER_MAP_PATH}'")

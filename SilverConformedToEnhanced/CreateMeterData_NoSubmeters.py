@@ -10,6 +10,11 @@
 
 # COMMAND ----------
 
+# Set up the environment using a function in ConfigUtilties.
+set_spark_config()
+
+# COMMAND ----------
+
 from pyspark.sql.functions import countDistinct, col, max
 from delta.tables import DeltaTable
 
