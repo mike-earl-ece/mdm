@@ -181,11 +181,10 @@ else:
 # 11/3/2024 - About 2400 timestamps had duplicate readings that were nearly identical, but not exactly.  This was daylight savings transition, so 
 # we're speculating that this might be related.  For these values, we're going to pick the larger magnitude reading and move on.
 # duplicates_df = ingest_valid_df.groupBy("MeterNumber", "UnitOfMeasure", "FlowDirection", "Channel", "StartDateTime", "EndDateTime")\
-#                   .count().filter("count > 1")
+#                    .count().filter("count > 1")
 # print(duplicates_df.count())
-
-# ingest_110324fix_df = ingest_valid_df.groupBy("MeterNumber", "UnitOfMeasure", "FlowDirection", "Channel", "StartDateTime", "EndDateTime") \
-#                             .agg(max(col("AMIValue")).alias("AMIValue"), max(col("VEEValue")).alias("VEEValue"))
+# ingest_110324fix_df = ingest_valid_df.groupBy("MeterNumber", "UnitOfMeasure", "FlowDirection",  "Channel", "StartDateTime", "EndDateTime") \
+#                              .agg(max(col("AMIValue")).alias("AMIValue"), max(col("VEEValue")).alias("VEEValue"))
 
 # Validate the previous did the right thing.
 
@@ -197,8 +196,11 @@ else:
 # ingest_valid_df.printSchema()
 # ingest_110324fix_df.printSchema()
 
-#  Assign the fix to ingest_valid_df.  The next cell will validate no remaining duplicates.
-# ingest_valid_df = ingest_110324fix_df
+# COMMAND ----------
+
+#  Part 2 of the 11/2/2025 duplicate fix.  After validating, assign the fix to ingest_valid_df.  
+# # The next cell will validate no remaining duplicates.
+#ingest_valid_df = ingest_110324fix_df
   
 
 # COMMAND ----------
