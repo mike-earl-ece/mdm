@@ -17,11 +17,18 @@ set_spark_config()
 # Create an index for n years.
 import pandas as pd
 from datetime import datetime, time, timedelta
-from pyspark.sql.functions import year, month, day, hour, minute, col, monotonically_increasing_id, from_utc_timestamp
+from pyspark.sql.functions import year, month, day, hour, minute, col, monotonically_increasing_id, from_utc_timestamp, when, lit, dayofweek, udf
+from pyspark.sql.types import IntegerType
 
-
-start_year = 2023
+start_year = 2021
 end_year = 2040
+
+# COMMAND ----------
+
+# Install a holidays library
+%pip install holidays
+
+import holidays
 
 # COMMAND ----------
 
@@ -32,19 +39,9 @@ def datetime_range(start, end, delta):
         yield current
         current += delta
 
-#TimeStampStr = [dt.strftime('%Y-%m-%d T%H:%M Z') for dt in 
-#       datetime_range(datetime(start_year, 1, 1, 0), datetime(end_year, 12, 31, 23, 59), 
-#       timedelta(minutes=5))]
-
 TimeStamp = [dt for dt in 
        datetime_range(datetime(start_year, 1, 1, 0), datetime(end_year, 12, 31, 23, 59), 
        timedelta(minutes=5))]
-
-# COMMAND ----------
-
-print(type(TimeStamp))
-print(type(TimeStamp[0]))
-
 
 # COMMAND ----------
 
@@ -78,7 +75,11 @@ display(timestamps_df)
 # COMMAND ----------
 
 # Add the index.
-timestamps_df = timestamps_df.withColumn("MeterSampleIndex", monotonically_increasing_id())
+from pyspark.sql.window import Window
+from pyspark.sql.functions import row_number
+
+window_spec = Window.orderBy("UTCTimeStamp")
+timestamps_df = timestamps_df.withColumn("MeterSampleIndex", row_number().over(window_spec))
 
 display(timestamps_df)
 
@@ -86,6 +87,24 @@ display(timestamps_df)
 
 max_index_row = timestamps_df.orderBy(col("MeterSampleIndex").desc()).limit(1)
 display(max_index_row)
+
+# COMMAND ----------
+
+# Add weekend and holiday flags.
+
+# Define a function to check if a date is a holiday
+def is_holiday(date):
+    us_holidays = holidays.US(years=date.year)
+    return date in us_holidays
+
+# Add weekend column
+timestamps_holiday_df = timestamps_df.withColumn('Weekend', when(dayofweek(col('LocalTimeStamp')).isin([1, 7]), lit(1)).otherwise(lit(0)))
+
+# Add holiday column
+is_holiday_udf = udf(lambda date: 1 if is_holiday(date) else 0, IntegerType())
+timestamps_holiday_df = timestamps_holiday_df.withColumn('Holiday', is_holiday_udf(col('LocalTimeStamp')))
+
+display(timestamps_holiday_df)
 
 # COMMAND ----------
 

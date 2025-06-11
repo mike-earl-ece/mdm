@@ -87,11 +87,9 @@ if debug and clean_has_data:
 # Find the changes in the Bronze ingest table.  
 found_ingest_changes = True # Will be set to False if no changes.
 
-# If the clean table has no data, get all the changes.
+# If the clean table has no data, get all the data.
 if clean_has_data == False:
         ingest_changes_all_df = spark.read \
-                .option("readChangeFeed", "true") \
-                .option("startingVersion", 0) \
                 .table(input_table_name)
 # If the clean table has data, get the ingested changes since the last change.  If there are no changes to ingestion data, an exception will be 
 # thrown, caught, and found_changes will be set to False.
@@ -120,13 +118,14 @@ if found_ingest_changes == False:
 
 # When an update happens on the input table, there are two rows added to the change list - one representing the new row and one representing the old row.  
 # We need to remove the old row from the change set by filtering out _change_types with the values update_preimage.
-ingest_changes_all_df = ingest_changes_all_df.filter(col('_change_type') != "update_preimage")
+if clean_has_data:
+  ingest_changes_all_df = ingest_changes_all_df.filter(col('_change_type') != "update_preimage")
 
-# Deletes are unlikely, but can happen if some maintenance was done on the input file.  We need to remove these from the change set.
-ingest_changes_all_df = ingest_changes_all_df.filter(col('_change_type') != "delete")
+  # Deletes are unlikely, but can happen if some maintenance was done on the input file.  We need to remove these from the change set.
+  ingest_changes_all_df = ingest_changes_all_df.filter(col('_change_type') != "delete")
 
-if debug:
-  print(ingest_changes_all_df.count())
+  if debug:
+    print(ingest_changes_all_df.count())
 
 # COMMAND ----------
 
