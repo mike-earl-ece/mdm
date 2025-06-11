@@ -164,6 +164,9 @@ cal_df =  spark.read.parquet(INDEXED_CALENDAR_PATH)
 # MDM data is UTC based, so drop the Local columns for this process.
 cal_df = cal_df.drop("LocalTimeStamp", "LocalYear", "LocalMonth", "LocalDay", "LocalHour", "LocalMinute")
 
+# Also drop the holiday and weekend columns as we don't use these here.
+cal_df = cal_df.drop("Holiday", "Weekend")
+
 if debug:
     display(cal_df)
 
