@@ -11,6 +11,11 @@
 
 # COMMAND ----------
 
+# Set up the environment using a function in ConfigUtilties.
+set_spark_config()
+
+# COMMAND ----------
+
 import pyspark
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import lit, month, year, when, col, month, regexp_replace, unix_timestamp
@@ -58,7 +63,7 @@ for i in range(0, len(input_files)):
     this_file = input_files[i].path
 
     # Read the Excel file into a DataFrame.  The top rows are not needed.
-    this_file_pdf = read_excel(input_files[i].path, sheet_name="Sheet1", header=0, dtype=str, skiprows=11)
+    this_file_pdf = read_excel(input_files[i].path, sheet_name="Sheet1", header=0, dtype=str, skiprows=11, usecols=range(9))
 
     # Find the index of the row with 'Totals' in the first column and only keep rows above it.
     totals_index = this_file_pdf[this_file_pdf.iloc[:, 0] == 'TOTALS'].index.tolist()[0]
@@ -81,8 +86,8 @@ for i in range(0, len(input_files)):
     if debug_for and i==0:
         display(this_file_pdf)
 
-    # Filter rows that have 'LR0' or 'IP' in the 'CONTRIBUTOR' column
-    this_file_sub_pdf = this_file_pdf[this_file_pdf['CONTRIBUTOR'].str.startswith(('LR0', 'IP'))]
+    # Filter out null roles in the 'CONTRIBUTOR' column, leaving only the substation info.
+    this_file_sub_pdf = this_file_pdf[this_file_pdf['CONTRIBUTOR'].notnull()]
 
     if debug_for and i==0:
         display(this_file_sub_pdf)
@@ -96,16 +101,8 @@ for i in range(0, len(input_files)):
     if debug_for and i==0:
         display(this_file_cols_df)
 
-    # Add a placeholder row for contract lights and monthly adjustments.  The name of the substation is "NA".
-    this_month_date = str(year) + "-" + f"{1:02d}" + "-01" + " 12:00"
-    placeholder_row = ('Adjustments', 'NA', 0, this_month_date, 0, 0, 0, 0, 0)
-    this_file_cols_df = this_file_cols_df.union(spark.createDataFrame([placeholder_row], col_names))
-
     this_file_final_df = this_file_cols_df.withColumn('Month', lit(month)) \
                                             .withColumn('Year', lit(year))
-
-    if debug_for and i==0:
-        display(this_file_final_df)
 
     if i==0:
         all_months_df = this_file_final_df
@@ -131,71 +128,24 @@ coincid_df.write.mode('overwrite').format('delta').save(COINCIDENTAL_LOAD_SILVER
 
 # COMMAND ----------
 
-# Rename the Fergus Ethanol plant to match iVUE.
-all_months_df = all_months_df.withColumn('Substation', \
-                                    when(all_months_df['Substation']!="FERGUS ETHANOL", all_months_df['Substation']) \
-                                        .otherwise("FERGUS FALLS 2"))
+# Do some data cleaning on the numeric columns and convert them.  
+
+# Get rid of the alpha characters that show up in some columns.
+all_months_df = all_months_df.withColumn('CoincidLoad', regexp_replace('CoincidLoad', '[A-Z]', '')) \
+                                            .withColumn('NonCoincidLoad', regexp_replace('NonCoincidLoad', '[A-Z]', ''))
 
 if debug:
     display(all_months_df)
 
 # COMMAND ----------
 
-# Bring in the Erhard hybrid offset.  This is an adder to the GRE supplied.
-erhard_location = ERHARD_HYBRID_PRODUCTION
-
-erhard_df = spark.read.option("header", True).csv(erhard_location)
-
-erhard_df = erhard_df.withColumn('Month', month(erhard_df.ENTERDATE)) \
-                            .withColumn('Year', year(erhard_df.ENTERDATE)) \
-                            .select('Month', 'Year', 'SUBSTATION', 'HYBRIDPRODUCTION' )
-
-erhard_df = erhard_df.withColumnRenamed('SUBSTATION', 'Substation') \
-                        .withColumnRenamed('HYBRIDPRODUCTION', 'HybridProduction')
-
-if debug:
-    display(erhard_df)
-
-# COMMAND ----------
-
-# Join the Erhard dataframe to the main dataframe.  
-all_months_erhard_df = all_months_df.join(erhard_df, on=['Month', 'Year', 'Substation'], how='leftouter')
-
-all_months_erhard_df = all_months_erhard_df.withColumn('TotalSupplied', \
-                                    when(all_months_erhard_df['Substation']!="ERHARD", all_months_erhard_df['GRESupplied']) \
-                                        .otherwise(all_months_erhard_df['GRESupplied']+all_months_erhard_df['HybridProduction']))
-
-if debug:
-    display(all_months_erhard_df)
-
-# COMMAND ----------
-
-# Do some data cleaning on the numeric columns and convert them.  
-
-# Get rid of the alpha characters that show up in some columns.
-all_months_erhard_clean_df = all_months_erhard_df.withColumn('CoincidLoad', regexp_replace('CoincidLoad', '[A-Z]', '')) \
-                                            .withColumn('NonCoincidLoad', regexp_replace('NonCoincidLoad', '[A-Z]', ''))
-
-if debug:
-    display(all_months_erhard_clean_df)
-
-# COMMAND ----------
-
 # Convert the columns to proper data types.
-all_months_types_df = all_months_erhard_clean_df \
-            .withColumn('NonCoincidLoad', all_months_erhard_clean_df['NonCoincidLoad'].cast(DoubleType())) \
-            .withColumn('CoincidLoad', all_months_erhard_clean_df['CoincidLoad'].cast(DoubleType())) \
-            .withColumn('GRESupplied', all_months_erhard_clean_df['GRESupplied'].cast(DoubleType())) \
-            .withColumn('LDFact', all_months_erhard_clean_df['LDFact'].cast(DoubleType())) \
-            .withColumn('PwrFact', all_months_erhard_clean_df['PwrFact'].cast(DoubleType())) \
-            .withColumn('HybridProduction', all_months_erhard_clean_df['HybridProduction'].cast(DoubleType()))\
-            .withColumn('TotalSupplied', all_months_erhard_clean_df['TotalSupplied'].cast(DoubleType())) 
-
-# Clean up nulls
-all_months_types_df = all_months_types_df \
-                    .withColumn('HybridProduction', when(all_months_types_df['HybridProduction'].isNull(), 
-                                                 lit(0)).otherwise(all_months_types_df['HybridProduction'])) \
-
+all_months_types_df = all_months_df \
+            .withColumn('NonCoincidLoad', all_months_df['NonCoincidLoad'].cast(DoubleType())) \
+            .withColumn('CoincidLoad', all_months_df['CoincidLoad'].cast(DoubleType())) \
+            .withColumn('GRESupplied', all_months_df['GRESupplied'].cast(DoubleType())) \
+            .withColumn('LDFact', all_months_df['LDFact'].cast(DoubleType())) \
+            .withColumn('PwrFact', all_months_df['PwrFact'].cast(DoubleType())) 
 
 if debug:
     display(all_months_types_df)
@@ -214,8 +164,15 @@ if debug:
 
 # COMMAND ----------
 
+all_months_filtered_types_df = all_months_types_df.filter(col('Year') > 2017)
+
+if debug:
+    display(all_months_filtered_types_df)
+
+# COMMAND ----------
+
 # Save dataframe to delta lake.
-all_months_types_df.write.mode('overwrite').format('delta').save(GRE_MONTHLY_LOAD_SILVER_PATH)
+all_months_filtered_types_df.write.mode('overwrite').format('delta').save(GRE_MONTHLY_LOAD_SILVER_PATH)
 
 
 # COMMAND ----------
@@ -223,37 +180,3 @@ all_months_types_df.write.mode('overwrite').format('delta').save(GRE_MONTHLY_LOA
 # Clean up the delta history.
 spark.sql(f"VACUUM '{COINCIDENTAL_LOAD_SILVER_PATH}'")
 spark.sql(f"VACUUM '{GRE_MONTHLY_LOAD_SILVER_PATH}'")
-
-# COMMAND ----------
-
-# Craete a table that can be used to enable a many to many relationship in Power BI.  This will be based on Year-Month-Substation.
-# from pyspark.sql.functions import concat
-
-# dim_df = all_months_erhard_df.select('Year', 'Month', 'Substation', 'YearMonthSub').distinct()
-
-# if debug:
-#     display(dim_df)
-
-
-# COMMAND ----------
-
-# Save dataframe to a single file.
-# output_path = "/mnt/Silver/GREMonthlyLoad/DIM_YearMonthSub"
-# output_file = "/DIM_YearMonthSub.csv"
-
-# dest_file = output_path + output_file
-
-# files = dbutils.fs.ls(output_path)
-
-# # Remove old file if it exists.
-# if len(files) != 0:
-#     dbutils.fs.rm(dest_file)
-
-# dim_df.coalesce(1).write.option("header",True).mode('overwrite').csv(output_path)
-
-# files = dbutils.fs.ls(output_path)
-# new_file = [x.path for x in files if x.path.endswith(".csv")][0]
-# print(new_file)
-# dbutils.fs.cp(new_file, dest_file)
-
-
