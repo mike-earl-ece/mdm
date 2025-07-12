@@ -14,6 +14,11 @@ set_spark_config()
 
 # COMMAND ----------
 
+# Print to ensure we're pointing to the test storage account.
+print(INDEXED_CALENDAR_PATH)
+
+# COMMAND ----------
+
 # Create an index for n years.
 import pandas as pd
 from datetime import datetime, time, timedelta

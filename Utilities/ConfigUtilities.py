@@ -37,8 +37,11 @@ INDEXED_CALENDAR_PATH = CONTAINER_URI_PATH + "SilverConformed/IndexedCalendar/"
 
 # SilverConformed to SilverEnhanced
 MDM_HOURLY_NO_SUBMETERS_PATH = CONTAINER_URI_PATH + "SilverEnhanced/MDM/Hourly_NoSubmeters/"
+MDM_HOURLY_NO_SUBMETERS_TABLE = SCHEMA + ".silverenhanced_mdm_hourly_no_submeters"
 MDM_HOURLY_PATH = CONTAINER_URI_PATH + "SilverEnhanced/MDM/Hourly/"
-MDM_NO_SUBMETERS = CONTAINER_URI_PATH + "SilverEnhanced/MDM/NoSubmeters/"
+MDM_HOURLY_TABLE = SCHEMA + ".silverenhanced_mdm_hourly"
+MDM_NO_SUBMETERS_PATH = CONTAINER_URI_PATH + "SilverEnhanced/MDM/NoSubmeters/"
+MDM_NO_SUBMETERS_TABLE = SCHEMA + ".silverenhanced_mdm_no_submeters"
 
 # Silver to Gold
 COINCIDENTAL_PEAK_ALL_METER_TOTAL_PATH = CONTAINER_URI_PATH + "Gold/LoadControl/CoincidPeakAllMeterTotal"
