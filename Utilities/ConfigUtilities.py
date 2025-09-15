@@ -19,6 +19,7 @@ SCHEMA = "default"  # Production
 DEMAND_RATE_PATH = CONTAINER_URI_PATH + "Bronze/Misc/DemandRates/GREDemandCharges.csv"
 DIM_METER_INFO_PATH = CONTAINER_URI_PATH + "Bronze/iVUE/MeterInfo/DIM_MeterInfo.csv"
 GRE_MONTHLY_LOAD_PATH = CONTAINER_URI_PATH + "Bronze/GREMonthlyLoad/"
+LOAD_CONTROL_INGEST_PATH = CONTAINER_URI_PATH + "Bronze/ControlTimes/"
 MDM_LANDING_PATH = CONTAINER_URI_PATH + "MDMLandingZone" 
 MDM_INGEST_CHECKPOINT_PATH = CONTAINER_URI_PATH + "Bronze/Checkpoint"
 MDM_INGEST_TABLE = SCHEMA + ".bronze_mdmingest"
@@ -29,6 +30,7 @@ COINCIDENTAL_LOAD_INDEX_PATH = CONTAINER_URI_PATH + "SilverConformed/Coincidenta
 COINCIDENTAL_LOAD_SILVER_PATH = CONTAINER_URI_PATH + "SilverConformed/CoincidentalLoad/Monthly/"
 DIM_SUBMETER_MAP_PATH = CONTAINER_URI_PATH + "SilverConformed/DIMSubmeterMap"
 GRE_MONTHLY_LOAD_SILVER_PATH = CONTAINER_URI_PATH + "SilverConformed/GREMonthlyLoad/"
+LOAD_CONTROL_INDEX_PATH = CONTAINER_URI_PATH + "SilverConformed/LoadControlPeriods/"
 MDM_CLEANED_PATH = CONTAINER_URI_PATH + "SilverConformed/MDM/Cleaned/"
 MDM_CLEANED_TABLE = SCHEMA + ".silverconformed_mdm_cleaned"
 MDM_INDEXED_PATH = CONTAINER_URI_PATH + "SilverConformed/MDM/Indexed/"
@@ -36,6 +38,7 @@ MDM_INDEXED_TABLE = SCHEMA + ".silverconformed_mdm_indexed"
 INDEXED_CALENDAR_PATH = CONTAINER_URI_PATH + "SilverConformed/IndexedCalendar/"
 
 # SilverConformed to SilverEnhanced
+LOAD_CONTROL_TIMESERIES_PATH = CONTAINER_URI_PATH + "SilverEnhanced/LoadControlTimeSeries/"
 MDM_HOURLY_NO_SUBMETERS_PATH = CONTAINER_URI_PATH + "SilverEnhanced/MDM/Hourly_NoSubmeters/"
 MDM_HOURLY_NO_SUBMETERS_TABLE = SCHEMA + ".silverenhanced_mdm_hourly_no_submeters"
 MDM_HOURLY_PATH = CONTAINER_URI_PATH + "SilverEnhanced/MDM/Hourly/"

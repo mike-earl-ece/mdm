@@ -11,7 +11,11 @@
 
 # COMMAND ----------
 
-from pyspark.sql.functions import col, year, month, day, hour, minute, concat_ws
+set_spark_config()
+
+# COMMAND ----------
+
+from pyspark.sql.functions import col, year, month, day, hour, minute, concat_ws, regexp_replace
 from pyspark.sql.utils import AnalysisException
 from delta.tables import DeltaTable
 
@@ -19,24 +23,22 @@ debug = 1
 
 # COMMAND ----------
 
-from pyspark.sql.types import StructType, StructField, IntegerType, FloatType, StringType, TimestampType
+from pyspark.sql.types import StructType, StructField, IntegerType, FloatType, StringType,  DateType, TimestampType
 
 # The load control type, start, and end times are the most important fields.
 schema = StructType([
-    StructField("ResourceName", StringType(), True),
-    StructField("LocalName", StringType(), True),
-    StructField("ReasonCode", StringType(), True),
-    StructField("StartDateTime", TimestampType(), True),
-    StructField("EndDateTime", TimestampType(), True),
-    StructField("Note", StringType(), True)
+    StructField("Date", StringType(), True),
+    StructField("Program", StringType(), True),
+    StructField("StartTime", StringType(), True),
+    StructField("StopTime", StringType(), True)
 ])
 
 # COMMAND ----------
 
 # Read all the load control events
-file_name = f"{LOAD_CONTROL_INGEST_PATH}/*/*.csv"
+file_name = f"{LOAD_CONTROL_INGEST_PATH}/*.csv"
 
-lc_df = spark.read.csv(file_name, header=False, schema=schema)
+lc_df = spark.read.csv(file_name, header=True, schema=schema)
 
 if debug:
     print(lc_df.count())
@@ -45,10 +47,34 @@ if debug:
 # COMMAND ----------
 
 # Drop duplicates.  In theory, there shouldn't be any.
-lc_df = lc_df.dropDuplicates()
+lc_nodup_df = lc_df.dropDuplicates()
 
 if debug:
-    print(lc_df.count())
+    print(lc_nodup_df.count())
+
+# COMMAND ----------
+
+from pyspark.sql.functions import to_timestamp, concat_ws
+
+# Combine Date and StartTime / Endtime into a single datetime column; convert to DateTime.
+lc_nodup_df = lc_nodup_df.withColumn('StartTimeString', concat_ws(" ", col("Date"), col("StartTime")))
+lc_nodup_df = lc_nodup_df.withColumn('EndTimeString', concat_ws(" ", col("Date"), col("StopTime")))
+if debug:
+    display(lc_nodup_df)
+
+lc_nodup_ts_df = lc_nodup_df.withColumn(
+    "StartDateTime",
+    to_timestamp(col('StartTimeString'), "M/d/yyyy H:mm")
+)
+lc_nodup_ts_df = lc_nodup_ts_df.withColumn(
+    "EndDateTime",
+    to_timestamp(col('EndTimeString'), "M/d/yyyy H:mm")
+)
+
+lc_nodup_ts_df = lc_nodup_ts_df.drop('StartTimeString', 'EndTimeString')
+
+if debug:
+    display(lc_nodup_ts_df)
 
 # COMMAND ----------
 
@@ -66,7 +92,7 @@ if debug:
 # Join datasets by time.  We want the meter sample index for both the start and end times.
 
 # Add time columns to the load control data for the joins.
-lc_df = lc_df.withColumn("StartYear", year(col("StartDateTime"))) \
+lc_nodup_ts_df = lc_nodup_ts_df.withColumn("StartYear", year(col("StartDateTime"))) \
                                     .withColumn("StartMonth", month(col("StartDateTime"))) \
                                     .withColumn("StartDay", day(col("StartDateTime"))) \
                                     .withColumn("StartHour", hour(col("StartDateTime"))) \
@@ -78,16 +104,16 @@ lc_df = lc_df.withColumn("StartYear", year(col("StartDateTime"))) \
                                     .withColumn("EndMinute", minute(col("EndDateTime")))
 
 if debug:
-    display(lc_df)
+    display(lc_nodup_ts_df)
 
 # COMMAND ----------
 
 # Add the start sample index.
-new_data_start_df = lc_df.join(cal_df, (lc_df.StartYear == cal_df.LocalYear) & \
-                                         (lc_df.StartMonth == cal_df.LocalMonth) & \
-                                             (lc_df.StartDay == cal_df.LocalDay) & \
-                                                (lc_df.StartHour == cal_df.LocalHour) & 
-                                                 (lc_df.StartMinute == cal_df.LocalMinute), how="leftouter") 
+new_data_start_df = lc_nodup_ts_df.join(cal_df, (lc_nodup_ts_df.StartYear == cal_df.LocalYear) & \
+                                         (lc_nodup_ts_df.StartMonth == cal_df.LocalMonth) & \
+                                             (lc_nodup_ts_df.StartDay == cal_df.LocalDay) & \
+                                                (lc_nodup_ts_df.StartHour == cal_df.LocalHour) & 
+                                                 (lc_nodup_ts_df.StartMinute == cal_df.LocalMinute), how="leftouter") 
 
 new_data_start_df = new_data_start_df.drop('LocalYear', 'LocalMonth', 'LocalDay', 'LocalHour', 'LocalMinute', 'LocalDate', 'LocalTimeStamp', 'LocalTime', 'Holiday', 'Weekend')
 new_data_start_df = new_data_start_df.drop('StartYear', 'StartMonth', 'StartDay', 'StartHour', 'StartMinute')
@@ -133,7 +159,11 @@ else:
 # COMMAND ----------
 
 # Add a unique ID to each row.  This will be used as the key for relationships with other datasets.
-new_data_df = new_data_df.withColumn('LoadControlEventID', concat_ws("_", col('ResourceName'), col('StartDateTime').cast('string'), col('EndDateTime').cast('string')))
+# Get rid of spaces first.
+new_data_df = new_data_df.withColumn('ProgramId', regexp_replace(col('Program'), ' ', '_').cast('string'))
+
+# Append ProgramId and start/stop.
+new_data_df = new_data_df.withColumn('LoadControlEventID', concat_ws("_", col('ProgramId'), col('StartDateTime').cast('string'), col('EndDateTime').cast('string')))
 
 if debug:
     display(new_data_df)
